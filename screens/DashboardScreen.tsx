@@ -8,12 +8,16 @@ import {
   Alert,
   RefreshControl,
 } from 'react-native';
+
 import { router } from 'expo-router';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { logout } from '../store/authSlice';
 import { fetchUserStats, fetchUserReports } from '../store/statsActions';
 import { incrementTodayReports } from '../store/statsSlice';
 import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
+import PoolHeader from '../components/ui/PoolHeader';
+import BottomTabBar from '../components/ui/BottomTabBar';
+import Colors from '../constants/colors';
 
 export default function DashboardScreen() {
   const { user } = useAppSelector((state) => state.auth);
@@ -77,228 +81,154 @@ export default function DashboardScreen() {
       icon: 'add-circle-outline',
       title: 'Nuevo Reporte',
       subtitle: 'Crear reporte de mantenimiento',
-      color: '#4CAF50',
+      color: Colors.primary.blue,
       onPress: handleNewReport,
     },
     {
       icon: 'document-text-outline',
       title: 'Ver Reportes',
       subtitle: 'Historial de reportes',
-      color: '#2196F3',
+      color: Colors.primary.green,
       onPress: handleViewReports,
     },
     {
-      icon: 'analytics-outline',
-      title: 'Estadísticas',
-      subtitle: 'Análisis y métricas',
-      color: '#FF9800',
-      onPress: handleAnalytics,
+      icon: 'storefront-outline',
+      title: 'Productos',
+      subtitle: 'Pedidos y suministros',
+      color: Colors.primary.orange,
+      onPress: () => {
+        // TODO: Navigate to products
+        Alert.alert('Productos', 'Funcionalidad de productos en desarrollo');
+      },
     },
   ];
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl
-          refreshing={isLoading}
-          onRefresh={onRefresh}
-          colors={['#2196F3']}
-          tintColor="#2196F3"
-        />
-      }
-    >
-      {/* Header Section */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.userInfo}>
-            <View style={styles.avatarContainer}>
-              <Ionicons name="person" size={24} color="white" />
+    <View style={styles.container}>
+      <PoolHeader 
+        title="Panel de Control" 
+        subtitle={`Bienvenido, ${user?.name || 'Usuario'}`}
+        showLogout={true} 
+        onLogout={handleLogout}
+      />
+      
+      <ScrollView 
+        style={styles.container} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={isLoading}
+            onRefresh={onRefresh}
+            colors={['#0066CC']}
+            tintColor="#0066CC"
+          />
+        }
+      >
+        {/* Header Section eliminado - ahora usa PoolHeader */}
+
+        {/* Stats Section */}
+        <View style={styles.statsSection}>
+          <Text style={styles.sectionTitle}>Resumen de Actividad</Text>
+          <View style={styles.statsGrid}>
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: Colors.primary.blue + '20' }]}>
+                <MaterialIcons name="assignment" size={24} color={Colors.primary.blue} />
+              </View>
+              <Text style={styles.statNumber}>{userStats?.totalReports || 0}</Text>
+              <Text style={styles.statLabel}>Total Reportes</Text>
             </View>
-            <View style={styles.userText}>
-              <Text style={styles.welcomeText}>Bienvenido</Text>
-              <Text style={styles.userName}>{user?.name}</Text>
-              <Text style={styles.userRole}>{user?.role === 'admin' ? 'Administrador' : 'Técnico'}</Text>
-              {lastUpdate && (
-                <Text style={styles.lastUpdateText}>
-                  Actualizado: {new Date(lastUpdate).toLocaleTimeString('es-ES', { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </Text>
-              )}
+            
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: Colors.primary.green + '20' }]}>
+                <Ionicons name="today-outline" size={24} color={Colors.primary.green} />
+              </View>
+              <Text style={styles.statNumber}>{userStats?.todayReports || 0}</Text>
+              <Text style={styles.statLabel}>Hoy</Text>
+            </View>
+            
+            <View style={styles.statCard}>
+              <View style={[styles.statIcon, { backgroundColor: Colors.primary.orange + '20' }]}>
+                <Ionicons name="calendar-outline" size={24} color={Colors.primary.orange} />
+              </View>
+              <Text style={styles.statNumber}>{userStats?.weekReports || 0}</Text>
+              <Text style={styles.statLabel}>Esta Semana</Text>
             </View>
           </View>
-          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
-            <Ionicons name="log-out-outline" size={20} color="white" />
-          </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Stats Section */}
-      <View style={styles.statsSection}>
-        <Text style={styles.sectionTitle}>Resumen de Actividad</Text>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#E3F2FD' }]}>
-              <MaterialIcons name="assignment" size={24} color="#2196F3" />
-            </View>
-            <Text style={styles.statNumber}>{userStats?.totalReports || 0}</Text>
-            <Text style={styles.statLabel}>Total Reportes</Text>
+        {/* Quick Actions Section */}
+        <View style={styles.actionsSection}>
+          <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
+          <View style={styles.actionsGrid}>
+            {quickActions.map((action, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.actionCard}
+                onPress={action.onPress}
+                activeOpacity={0.7}
+              >
+                <View style={[styles.actionIcon, { backgroundColor: `${action.color}20` }]}>
+                  <Ionicons name={action.icon as any} size={28} color={action.color} />
+                </View>
+                <Text style={styles.actionTitle}>{action.title}</Text>
+                <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Recent Reports Section */}
+        <View style={styles.recentSection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Reportes Recientes</Text>
           </View>
           
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#E8F5E8' }]}>
-              <Ionicons name="today-outline" size={24} color="#4CAF50" />
-            </View>
-            <Text style={styles.statNumber}>{userStats?.todayReports || 0}</Text>
-            <Text style={styles.statLabel}>Hoy</Text>
-          </View>
-          
-          <View style={styles.statCard}>
-            <View style={[styles.statIcon, { backgroundColor: '#FFF3E0' }]}>
-              <Ionicons name="calendar-outline" size={24} color="#FF9800" />
-            </View>
-            <Text style={styles.statNumber}>{userStats?.weekReports || 0}</Text>
-            <Text style={styles.statLabel}>Esta Semana</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Quick Actions Section */}
-      <View style={styles.actionsSection}>
-        <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
-        <View style={styles.actionsGrid}>
-          {quickActions.map((action, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.actionCard}
-              onPress={action.onPress}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.actionIcon, { backgroundColor: `${action.color}20` }]}>
-                <Ionicons name={action.icon as any} size={28} color={action.color} />
-              </View>
-              <Text style={styles.actionTitle}>{action.title}</Text>
-              <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </View>
-
-      {/* Recent Reports Section */}
-      <View style={styles.recentSection}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Reportes Recientes</Text>
-          <TouchableOpacity onPress={handleViewReports}>
-            <Text style={styles.viewAllText}>Ver todos</Text>
-          </TouchableOpacity>
-        </View>
-        
-        {reportHistory && reportHistory.reports.length > 0 ? (
-          reportHistory.reports.map((report: any, index: number) => (
-            <View key={index} style={styles.reportCard}>
-              <View style={styles.reportIcon}>
-                <FontAwesome5 name="clipboard-check" size={20} color="#2196F3" />
-              </View>
-              <View style={styles.reportContent}>
-                <View style={styles.reportHeader}>
-                  <Text style={styles.reportNumber}>Reporte #{report.id}</Text>
+          {reportHistory && reportHistory.reports.length > 0 ? (
+            reportHistory.reports.map((report: any, index: number) => (
+              <View key={index} style={styles.reportCard}>
+                <View style={styles.reportIcon}>
+                  <FontAwesome5 name="clipboard-check" size={20} color={Colors.primary.blue} />
+                </View>
+                <View style={styles.reportContent}>
+                  <Text style={styles.reportNumber}>Reporte {report.report_number}</Text>
+                  <Text style={styles.reportClient}>{report.status || 'Completado'}</Text>
+                  <Text style={styles.reportLocation}>
+                    <Ionicons name="location-outline" size={12} color="#666" /> {report.location || 'Ubicación no especificada'}
+                  </Text>
                   <Text style={styles.reportDate}>
                     {new Date(report.created_at).toLocaleDateString('es-ES')}
                   </Text>
                 </View>
-                <Text style={styles.reportClient}>{report.status || 'Completado'}</Text>
-                <Text style={styles.reportLocation}>
-                  <Ionicons name="location-outline" size={12} color="#666" /> {report.location || 'Ubicación no especificada'}
-                </Text>
+                <Ionicons name="chevron-forward" size={20} color="#ccc" />
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#ccc" />
+            ))
+          ) : (
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIcon}>
+                <MaterialIcons name="assignment" size={48} color="#ccc" />
+              </View>
+              <Text style={styles.emptyTitle}>No hay reportes</Text>
+              <Text style={styles.emptySubtitle}>Crea tu primer reporte de mantenimiento</Text>
+              <TouchableOpacity style={styles.emptyAction} onPress={handleNewReport}>
+                <Text style={styles.emptyActionText}>Crear Reporte</Text>
+              </TouchableOpacity>
             </View>
-          ))
-        ) : (
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <MaterialIcons name="assignment" size={48} color="#ccc" />
-            </View>
-            <Text style={styles.emptyTitle}>No hay reportes</Text>
-            <Text style={styles.emptySubtitle}>Crea tu primer reporte de mantenimiento</Text>
-            <TouchableOpacity style={styles.emptyAction} onPress={handleNewReport}>
-              <Text style={styles.emptyActionText}>Crear Reporte</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    </ScrollView>
+          )}
+        </View>
+
+        <View style={{ height: 80 }} />
+      </ScrollView>
+
+      <BottomTabBar activeTab="home" />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: Colors.neutral.lightGray,
   },
-  // Header Styles
-  header: {
-    backgroundColor: '#1976D2',
-    paddingTop: 50,
-    paddingBottom: 30,
-    paddingHorizontal: 20,
-  },
-  headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  avatarContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 15,
-  },
-  userText: {
-    flex: 1,
-  },
-  welcomeText: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-    fontWeight: '400',
-  },
-  userName: {
-    color: 'white',
-    fontSize: 22,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  userRole: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 12,
-    fontWeight: '500',
-    marginTop: 2,
-  },
-  lastUpdateText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 10,
-    fontWeight: '400',
-    marginTop: 4,
-  },
-  logoutButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
   // Stats Section
   statsSection: {
     padding: 20,
@@ -307,7 +237,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: Colors.neutral.darkGray,
     marginBottom: 15,
   },
   statsGrid: {
@@ -315,17 +245,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   statCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: Colors.neutral.white,
+    borderRadius: 16,
     padding: 20,
     alignItems: 'center',
     flex: 1,
     marginHorizontal: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   statIcon: {
     width: 48,
@@ -338,12 +268,12 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: Colors.neutral.darkGray,
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 12,
-    color: '#666',
+    color: Colors.neutral.gray,
     textAlign: 'center',
     fontWeight: '500',
   },
@@ -358,17 +288,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   actionCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20,
+    backgroundColor: Colors.neutral.white,
+    borderRadius: 16,
+    padding: 18,
     alignItems: 'center',
     flex: 1,
     marginHorizontal: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   actionIcon: {
     width: 56,
@@ -379,15 +309,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   actionTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: Colors.neutral.darkGray,
     textAlign: 'center',
     marginBottom: 4,
   },
   actionSubtitle: {
-    fontSize: 11,
-    color: '#666',
+    fontSize: 10,
+    color: Colors.neutral.gray,
     textAlign: 'center',
     lineHeight: 14,
   },
@@ -405,19 +335,19 @@ const styles = StyleSheet.create({
   },
   viewAllText: {
     fontSize: 14,
-    color: '#1976D2',
+    color: Colors.primary.blue,
     fontWeight: '600',
   },
   reportCard: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: Colors.neutral.white,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -425,7 +355,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#E3F2FD',
+    backgroundColor: Colors.primary.blue + '20',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -442,35 +372,38 @@ const styles = StyleSheet.create({
   reportNumber: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1976D2',
+    color: Colors.primary.blue,
+    marginBottom: 4,
   },
   reportDate: {
-    fontSize: 12,
-    color: '#666',
+    fontSize: 11,
+    color: Colors.neutral.gray,
     fontWeight: '500',
+    fontStyle: 'italic',
+    marginTop: 4,
   },
   reportClient: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: Colors.neutral.darkGray,
     marginBottom: 2,
   },
   reportLocation: {
     fontSize: 13,
-    color: '#666',
+    color: Colors.neutral.gray,
     flexDirection: 'row',
     alignItems: 'center',
   },
   
   // Empty State
   emptyState: {
-    backgroundColor: 'white',
-    borderRadius: 12,
+    backgroundColor: Colors.neutral.white,
+    borderRadius: 16,
     padding: 40,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -480,24 +413,24 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#1a1a1a',
+    color: Colors.neutral.darkGray,
     marginBottom: 8,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#666',
+    color: Colors.neutral.gray,
     textAlign: 'center',
     marginBottom: 20,
     lineHeight: 20,
   },
   emptyAction: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: Colors.primary.green,
     paddingHorizontal: 24,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 12,
   },
   emptyActionText: {
-    color: 'white',
+    color: Colors.neutral.white,
     fontSize: 14,
     fontWeight: '600',
   },

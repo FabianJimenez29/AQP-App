@@ -48,30 +48,7 @@ export default function StepPhotoBefore() {
     }
   };
 
-  const selectFromGallery = async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Error', 'Se necesitan permisos para acceder a la galería');
-        return;
-      }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets[0]) {
-        const photoUri = result.assets[0].uri;
-        setPhoto(photoUri);
-        dispatch(updateCurrentReport({ beforePhoto: photoUri }));
-      }
-    } catch (error) {
-      Alert.alert('Error', 'No se pudo seleccionar la foto');
-    }
-  };
 
   const retakePhoto = () => {
     setPhoto(null);
@@ -90,9 +67,9 @@ export default function StepPhotoBefore() {
     return (
       <View style={styles.container}>
         <Text style={styles.noAccessText}>No hay acceso a la cámara</Text>
-        <TouchableOpacity style={styles.galleryButton} onPress={selectFromGallery}>
-          <Text style={styles.galleryButtonText}>Seleccionar de Galería</Text>
-        </TouchableOpacity>
+        <Text style={styles.subtitle}>
+          Para usar esta función, necesitas habilitar el acceso a la cámara en la configuración de tu dispositivo.
+        </Text>
       </View>
     );
   }
@@ -123,10 +100,6 @@ export default function StepPhotoBefore() {
           <View style={styles.buttonContainer}>
             <TouchableOpacity style={styles.cameraButton} onPress={takePhoto}>
               <Text style={styles.cameraButtonText}>Tomar Foto</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity style={styles.galleryButton} onPress={selectFromGallery}>
-              <Text style={styles.galleryButtonText}>Galería</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -179,8 +152,8 @@ const styles = StyleSheet.create({
     color: '#666',
   },
   buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    justifyContent: 'center',
+    alignItems: 'center',
     width: '100%',
   },
   cameraButton: {

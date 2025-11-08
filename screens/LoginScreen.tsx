@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,33 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('checking');
+  const [serverIP, setServerIP] = useState('');
   const dispatch = useDispatch();
+
+  // Verificar conexión al servidor al cargar la pantalla
+  useEffect(() => {
+    checkServerConnection();
+  }, []);
+
+  const checkServerConnection = async () => {
+    setConnectionStatus('checking');
+    try {
+      await ApiService.initialize();
+      const health = await ApiService.checkServerHealth();
+      if (health.success) {
+        setConnectionStatus('connected');
+        // Extraer IP de la URL actual del API
+        const currentUrl = ApiService.apiUrl;
+        const ipMatch = currentUrl.match(/http:\/\/([\d.]+):/);
+        setServerIP(ipMatch ? ipMatch[1] : 'desconocida');
+      } else {
+        setConnectionStatus('disconnected');
+      }
+    } catch (error) {
+      setConnectionStatus('disconnected');
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -112,6 +138,28 @@ export default function LoginScreen() {
       <View style={styles.logoContainer}>
         <Text style={styles.logoText}>AQUAPOOL</Text>
         <Text style={styles.subtitle}>Sistema de Reportes</Text>
+      </View>
+
+      {/* Indicador de conexión */}
+      <View style={styles.connectionContainer}>
+        <View style={[styles.connectionIndicator, 
+          connectionStatus === 'connected' ? styles.connected : 
+          connectionStatus === 'checking' ? styles.checking : styles.disconnected
+        ]}>
+          <Text style={styles.connectionText}>
+            {connectionStatus === 'connected' && '🟢 Conectado'}
+            {connectionStatus === 'checking' && '🟡 Verificando...'}
+            {connectionStatus === 'disconnected' && '🔴 Sin conexión'}
+          </Text>
+          {connectionStatus === 'connected' && (
+            <Text style={styles.serverIPText}>Servidor: {serverIP}</Text>
+          )}
+          {connectionStatus === 'disconnected' && (
+            <TouchableOpacity style={styles.reconnectButton} onPress={checkServerConnection}>
+              <Text style={styles.reconnectButtonText}>Reconectar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       <View style={styles.formContainer}>
@@ -296,5 +344,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#666',
+  },
+  // Estilos para el indicador de conexión
+  connectionContainer: {
+    marginBottom: 20,
+    paddingHorizontal: 20,
+  },
+  connectionIndicator: {
+    backgroundColor: '#f5f5f5',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 2,
+  },
+  connected: {
+    backgroundColor: '#e8f5e8',
+    borderColor: '#4caf50',
+  },
+  checking: {
+    backgroundColor: '#fff8e1',
+    borderColor: '#ff9800',
+  },
+  disconnected: {
+    backgroundColor: '#ffebee',
+    borderColor: '#f44336',
+  },
+  connectionText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  serverIPText: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 8,
+  },
+  reconnectButton: {
+    backgroundColor: '#2196F3',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 15,
+    marginTop: 4,
+  },
+  reconnectButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

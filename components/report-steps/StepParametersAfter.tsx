@@ -9,6 +9,7 @@ import {
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { updateCurrentReport } from '../../store/reportSlice';
 import { Parameters } from '../../types';
+import { Colors } from '../../constants/colors';
 
 export default function StepParametersAfter() {
   const [parameters, setParameters] = useState<Parameters>({
@@ -38,13 +39,48 @@ export default function StepParametersAfter() {
   };
 
   const parameterConfigs = [
-    { key: 'cl' as keyof Parameters, label: 'Cloro (CL)', unit: 'ppm' },
-    { key: 'ph' as keyof Parameters, label: 'Potencial de Hidrógeno (PH)', unit: '' },
-    { key: 'alk' as keyof Parameters, label: 'Alcalinidad (ALK)', unit: 'ppm' },
-    { key: 'stabilizer' as keyof Parameters, label: 'Estabilizador', unit: 'ppm' },
-    { key: 'hardness' as keyof Parameters, label: 'Dureza', unit: 'ppm' },
-    { key: 'salt' as keyof Parameters, label: 'Sal', unit: 'ppm' },
-    { key: 'temperature' as keyof Parameters, label: 'Temperatura', unit: '°C' },
+    { 
+      key: 'cl' as keyof Parameters, 
+      label: 'Cloro (CL)', 
+      unit: 'ppm',
+      recommendation: '1.0 - 1.5 ppm (Rango óptimo certificado)'
+    },
+    { 
+      key: 'ph' as keyof Parameters, 
+      label: 'Potencial de Hidrógeno (PH)', 
+      unit: '',
+      recommendation: '7.4 (Recomendado para piel y ojos) | 7.0 (Máxima eficacia del cloro)'
+    },
+    { 
+      key: 'alk' as keyof Parameters, 
+      label: 'Alcalinidad (ALK)', 
+      unit: 'ppm',
+      recommendation: '80 - 120 ppm (Estándar certificado)'
+    },
+    { 
+      key: 'stabilizer' as keyof Parameters, 
+      label: 'Estabilizador', 
+      unit: 'ppm',
+      recommendation: '30 - 50 ppm (Protección UV óptima)'
+    },
+    { 
+      key: 'hardness' as keyof Parameters, 
+      label: 'Dureza', 
+      unit: 'ppm',
+      recommendation: '175 - 300 ppm (Certificado por tiendas especializadas)'
+    },
+    { 
+      key: 'salt' as keyof Parameters, 
+      label: 'Sal', 
+      unit: 'ppm',
+      recommendation: '2700 - 3400 ppm (Para sistemas salinos)'
+    },
+    { 
+      key: 'temperature' as keyof Parameters, 
+      label: 'Temperatura', 
+      unit: '°C',
+      recommendation: '26 - 28°C (Confort óptimo)'
+    },
   ];
 
   return (
@@ -61,6 +97,11 @@ export default function StepParametersAfter() {
               {config.label}
               {config.unit && <Text style={styles.unit}> ({config.unit})</Text>}
             </Text>
+            <View style={styles.recommendationBox}>
+              <Text style={styles.recommendationText}>
+                ✅ {config.recommendation}
+              </Text>
+            </View>
             <TextInput
               style={styles.parameterInput}
               value={parameters[config.key].toString()}
@@ -195,5 +236,19 @@ const styles = StyleSheet.create({
   comparisonDiff: {
     fontSize: 12,
     fontWeight: '400',
+  },
+  recommendationBox: {
+    backgroundColor: '#E8F5E8',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 8,
+    borderLeftWidth: 4,
+    borderLeftColor: Colors.primary.green,
+  },
+  recommendationText: {
+    fontSize: 12,
+    color: '#2E7D32',
+    fontWeight: '500',
+    lineHeight: 16,
   },
 });

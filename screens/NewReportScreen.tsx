@@ -107,15 +107,11 @@ export default function NewReportScreen() {
                 technician: currentReport.technician || user?.name || 'Técnico',
               };
 
-              console.log('Enviando reporte a la base de datos:', reportToSend);
-              
               // Guardar en la base de datos AWS
               const savedReport = await ApiService.createReport(
                 reportToSend as any,
                 token || ''
               );
-              
-              console.log('Reporte guardado exitosamente:', savedReport);
               
               // Finalizar en Redux
               dispatch(finishReport());

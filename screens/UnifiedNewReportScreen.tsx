@@ -154,8 +154,9 @@ export default function UnifiedNewReportScreen() {
               dispatch(setLoading(true));
               dispatch(setError(null));
 
-              // Generar número de reporte único
-              const reportNumber = `#${String(Date.now()).slice(-6)}`;
+              // El número de reporte se generará en el servidor de forma consecutiva
+              // Usar ID temporal para las imágenes
+              const tempId = `temp_${Date.now()}`;
 
               // Subir imágenes a S3 antes de crear el reporte
               let beforePhotoUrl = '';
@@ -166,10 +167,9 @@ export default function UnifiedNewReportScreen() {
                   const beforeUpload = await ApiService.uploadImage(
                     beforePhoto, 
                     token || '', 
-                    `${reportNumber}_before_${Date.now()}`
+                    `${tempId}_before`
                   );
                   beforePhotoUrl = beforeUpload.url;
-                  console.log('✅ Imagen antes subida:', beforePhotoUrl);
                 } catch (uploadError) {
                   console.error('❌ Error subiendo imagen antes:', uploadError);
                   Alert.alert('Error', 'No se pudo subir la imagen antes del mantenimiento');
@@ -182,10 +182,9 @@ export default function UnifiedNewReportScreen() {
                   const afterUpload = await ApiService.uploadImage(
                     afterPhoto, 
                     token || '', 
-                    `${reportNumber}_after_${Date.now()}`
+                    `${tempId}_after`
                   );
                   afterPhotoUrl = afterUpload.url;
-                  console.log('✅ Imagen después subida:', afterPhotoUrl);
                 } catch (uploadError) {
                   console.error('❌ Error subiendo imagen después:', uploadError);
                   Alert.alert('Error', 'No se pudo subir la imagen después del mantenimiento');
@@ -194,7 +193,7 @@ export default function UnifiedNewReportScreen() {
               }
 
               const reportData = {
-                reportNumber,
+                // reportNumber se generará automáticamente en el servidor
                 clientName: clientName.trim(),
                 location: location.trim(),
                 technician: user?.name || 'Técnico',
@@ -213,12 +212,6 @@ export default function UnifiedNewReportScreen() {
                 createdAt: new Date().toISOString(),
               };
 
-              console.log('📤 Enviando reporte con imágenes S3:', {
-                reportNumber,
-                beforePhoto: beforePhotoUrl,
-                afterPhoto: afterPhotoUrl
-              });
-
               const savedReport = await ApiService.createReport(reportData as any, token || '');
               
               // Incrementar estadísticas inmediatamente
@@ -226,7 +219,7 @@ export default function UnifiedNewReportScreen() {
               
               Alert.alert(
                 'Éxito',
-                `Reporte ${reportNumber} enviado correctamente con imágenes subidas a S3`,
+                'Reporte enviado correctamente con imágenes subidas a S3. El número de reporte se asignó automáticamente.',
                 [{ text: 'OK', onPress: () => router.replace('dashboard' as any) }]
               );
 

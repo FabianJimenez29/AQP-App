@@ -38,13 +38,48 @@ export default function StepParametersBefore() {
   };
 
   const parameterConfigs = [
-    { key: 'cl' as keyof Parameters, label: 'Cloro (CL)', unit: 'ppm' },
-    { key: 'ph' as keyof Parameters, label: 'Potencial de Hidrógeno (PH)', unit: '' },
-    { key: 'alk' as keyof Parameters, label: 'Alcalinidad (ALK)', unit: 'ppm' },
-    { key: 'stabilizer' as keyof Parameters, label: 'Estabilizador', unit: 'ppm' },
-    { key: 'hardness' as keyof Parameters, label: 'Dureza', unit: 'ppm' },
-    { key: 'salt' as keyof Parameters, label: 'Sal', unit: 'ppm' },
-    { key: 'temperature' as keyof Parameters, label: 'Temperatura', unit: '°C' },
+    { 
+      key: 'cl' as keyof Parameters, 
+      label: 'Cloro (CL)', 
+      unit: 'ppm',
+      recommendation: '1.0 - 1.5 ppm (Rango óptimo certificado)'
+    },
+    { 
+      key: 'ph' as keyof Parameters, 
+      label: 'Potencial de Hidrógeno (PH)', 
+      unit: '',
+      recommendation: '7.4 (Recomendado para piel y ojos) | 7.0 (Máxima eficacia del cloro)'
+    },
+    { 
+      key: 'alk' as keyof Parameters, 
+      label: 'Alcalinidad (ALK)', 
+      unit: 'ppm',
+      recommendation: '80 - 120 ppm (Estándar certificado)'
+    },
+    { 
+      key: 'stabilizer' as keyof Parameters, 
+      label: 'Estabilizador', 
+      unit: 'ppm',
+      recommendation: '30 - 50 ppm (Protección UV óptima)'
+    },
+    { 
+      key: 'hardness' as keyof Parameters, 
+      label: 'Dureza', 
+      unit: 'ppm',
+      recommendation: '175 - 300 ppm (Certificado por tiendas especializadas)'
+    },
+    { 
+      key: 'salt' as keyof Parameters, 
+      label: 'Sal', 
+      unit: 'ppm',
+      recommendation: '2700 - 3400 ppm (Para sistemas salinos)'
+    },
+    { 
+      key: 'temperature' as keyof Parameters, 
+      label: 'Temperatura', 
+      unit: '°C',
+      recommendation: '26 - 28°C (Confort óptimo)'
+    },
   ];
 
   return (
@@ -61,6 +96,11 @@ export default function StepParametersBefore() {
               {config.label}
               {config.unit && <Text style={styles.unit}> ({config.unit})</Text>}
             </Text>
+            <View style={styles.recommendationBox}>
+              <Text style={styles.recommendationText}>
+                ✅ {config.recommendation}
+              </Text>
+            </View>
             <TextInput
               style={styles.parameterInput}
               value={parameters[config.key].toString()}
@@ -131,6 +171,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
     color: '#666',
+  },
+  recommendationBox: {
+    backgroundColor: '#f0f8ff',
+    padding: 10,
+    borderRadius: 6,
+    marginBottom: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: '#2196F3',
+  },
+  recommendationText: {
+    fontSize: 12,
+    color: '#1565C0',
+    fontWeight: '500',
+    lineHeight: 16,
   },
   parameterInput: {
     borderWidth: 1,

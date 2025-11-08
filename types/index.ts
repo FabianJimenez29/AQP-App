@@ -82,3 +82,41 @@ export interface ReportState {
   isLoading: boolean;
   error: string | null;
 }
+
+// Product types
+export interface ProductVariant {
+  id: number;
+  variant_name: string;
+  stock: number;
+  unit: string;
+  is_available: boolean;
+}
+
+export interface Product {
+  id: number;
+  name: string;
+  description: string;
+  category: string;
+  has_variants: boolean;
+  stock: number;
+  variants?: ProductVariant[];
+}
+
+export interface CartItem {
+  productId: number;
+  productName: string;
+  variantId?: number;
+  variantName?: string;
+  quantity: number;
+}
+
+export interface Order {
+  id?: number;
+  order_number?: string;
+  status: string;
+  notes?: string;
+  delivery_address?: string;
+  delivery_date?: string;
+  items: CartItem[];
+  created_at?: string;
+}
