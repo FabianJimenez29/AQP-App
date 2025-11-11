@@ -9,6 +9,8 @@ import {
   ScrollView,
   RefreshControl,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { Product } from '../types';
 import Colors from '../constants/colors';
@@ -19,7 +21,8 @@ import ApiService from '../services/api';
 import { useAppSelector } from '../store/hooks';
 import { useSelector } from 'react-redux';
 import { RootState } from '../store';
-import { router } from 'expo-router';
+
+type NavigationProp = StackNavigationProp<any>;
 
 // Datos de ejemplo para mostrar el diseño
 const sampleProducts: Product[] = [
@@ -94,6 +97,7 @@ const sampleProducts: Product[] = [
 const sampleCategories = ['Todos', 'Químicos', 'Equipos', 'Accesorios'];
 
 export default function ProductsScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
@@ -214,7 +218,7 @@ export default function ProductsScreen() {
             </View>
             <TouchableOpacity 
               style={styles.cartButton}
-              onPress={() => router.push('/cart')}
+              onPress={() => navigation.navigate('Cart')}
             >
               <Text style={styles.cartButtonText}>Ver Carrito</Text>
             </TouchableOpacity>

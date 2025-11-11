@@ -9,7 +9,8 @@ import {
   RefreshControl,
 } from 'react-native';
 
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { logout } from '../store/authSlice';
 import { fetchUserStats, fetchUserReports } from '../store/statsActions';
@@ -19,7 +20,10 @@ import PoolHeader from '../components/ui/PoolHeader';
 import BottomTabBar from '../components/ui/BottomTabBar';
 import Colors from '../constants/colors';
 
+type NavigationProp = StackNavigationProp<any>;
+
 export default function DashboardScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const { user } = useAppSelector((state) => state.auth);
   const { userStats, reportHistory, isLoading, lastUpdate } = useAppSelector((state) => state.stats);
   const dispatch = useAppDispatch();
@@ -55,7 +59,7 @@ export default function DashboardScreen() {
           text: 'Cerrar Sesión', 
           onPress: () => {
             dispatch(logout());
-            router.replace('login' as any);
+            navigation.replace('Login');
           }
         },
       ]
@@ -63,12 +67,11 @@ export default function DashboardScreen() {
   };
 
   const handleNewReport = () => {
-    router.push('unified-new-report' as any);
+    navigation.navigate('UnifiedNewReport');
   };
 
   const handleViewReports = () => {
-    // TODO: Implementar vista de reportes con historial
-    router.push('report-history' as any);
+    navigation.navigate('ReportHistory');
   };
 
   const handleAnalytics = () => {

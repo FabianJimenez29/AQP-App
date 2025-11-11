@@ -12,7 +12,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 
 import { Colors } from '../constants/colors';
 import { RootState, AppDispatch } from '../store';
@@ -25,15 +26,16 @@ import {
   CreateOrderRequest 
 } from '../store/cartSlice';
 
+type NavigationProp = StackNavigationProp<any>;
+
 const CartScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
   const dispatch = useDispatch<AppDispatch>();
   const { items, totalItems, totalAmount, isSubmitting, error, lastOrderNumber } = useSelector((state: RootState) => state.cart);
   const { user } = useSelector((state: RootState) => state.auth);
 
   // Form state
-  const [technicianName, setTechnicianName] = useState(user?.name || '');
-  const [technicianEmail, setTechnicianEmail] = useState(user?.email || '');
-  const [poolLocation, setPoolLocation] = useState('');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const [notes, setNotes] = useState('');
 
   const handleQuantityChange = (itemId: string, quantity: number) => {
@@ -75,11 +77,6 @@ const CartScreen: React.FC = () => {
 
   const handleSubmitOrder = async () => {
     // Validaciones
-    if (!technicianName.trim()) {
-      Alert.alert('Error', 'Por favor ingresa el nombre del técnico');
-      return;
-    }
-
     if (items.length === 0) {
       Alert.alert('Error', 'El carrito está vacío');
       return;
@@ -87,9 +84,6 @@ const CartScreen: React.FC = () => {
 
     // Preparar datos del pedido
     const orderData: CreateOrderRequest = {
-      technician_name: technicianName.trim(),
-      technician_email: technicianEmail.trim() || undefined,
-      pool_location: poolLocation.trim() || undefined,
       items: items.map(item => ({
         product_id: item.productId,
         product_name: item.productName,
@@ -98,6 +92,7 @@ const CartScreen: React.FC = () => {
         quantity: item.quantity,
         unit_price: item.unitPrice,
       })),
+      delivery_address: deliveryAddress.trim() || undefined,
       notes: notes.trim() || undefined,
     };
 
@@ -112,10 +107,10 @@ const CartScreen: React.FC = () => {
             text: 'OK',
             onPress: () => {
               // Limpiar formulario
-              setPoolLocation('');
+              setDeliveryAddress('');
               setNotes('');
               // Volver a productos
-              router.push('/products');
+              navigation.navigate('Products');
             }
           }
         ]
@@ -131,7 +126,7 @@ const CartScreen: React.FC = () => {
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity 
-            onPress={() => router.back()} 
+            onPress={() => navigation.goBack()} 
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={24} color={Colors.primary.blue} />
@@ -147,7 +142,7 @@ const CartScreen: React.FC = () => {
           </Text>
           <TouchableOpacity 
             style={styles.shopButton}
-            onPress={() => router.push('/products')}
+            onPress={() => navigation.navigate('Products')}
           >
             <Ionicons name="storefront-outline" size={20} color="white" />
             <Text style={styles.shopButtonText}>Ir a Productos</Text>
@@ -163,7 +158,7 @@ const CartScreen: React.FC = () => {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity 
-            onPress={() => router.back()} 
+            onPress={() => navigation.goBack()} 
             style={styles.backButton}
           >
             <Ionicons name="arrow-back" size={24} color={Colors.primary.blue} />
@@ -239,37 +234,18 @@ const CartScreen: React.FC = () => {
         <View style={styles.formContainer}>
           <Text style={styles.sectionTitle}>Información del pedido</Text>
           
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Nombre del técnico *</Text>
-            <TextInput
-              style={styles.input}
-              value={technicianName}
-              onChangeText={setTechnicianName}
-              placeholder="Nombre completo del técnico"
-              placeholderTextColor={Colors.neutral.gray}
-            />
+          <View style={styles.infoGroup}>
+            <Text style={styles.infoLabel}>Técnico:</Text>
+            <Text style={styles.infoValue}>{user?.name || 'Usuario'}</Text>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Email del técnico</Text>
+            <Text style={styles.inputLabel}>Dirección de entrega</Text>
             <TextInput
               style={styles.input}
-              value={technicianEmail}
-              onChangeText={setTechnicianEmail}
-              placeholder="email@ejemplo.com"
-              placeholderTextColor={Colors.neutral.gray}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Ubicación de la piscina</Text>
-            <TextInput
-              style={styles.input}
-              value={poolLocation}
-              onChangeText={setPoolLocation}
-              placeholder="Dirección o identificación de la piscina"
+              value={deliveryAddress}
+              onChangeText={setDeliveryAddress}
+              placeholder="Dirección o ubicación de entrega"
               placeholderTextColor={Colors.neutral.gray}
             />
           </View>
@@ -489,6 +465,25 @@ const styles = StyleSheet.create({
   formContainer: {
     padding: 16,
     backgroundColor: Colors.neutral.lightGray,
+  },
+  infoGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+  },
+  infoLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.neutral.gray,
+  },
+  infoValue: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: Colors.neutral.darkGray,
   },
   inputGroup: {
     marginBottom: 16,

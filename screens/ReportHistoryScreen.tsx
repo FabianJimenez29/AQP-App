@@ -10,10 +10,14 @@ import {
   Modal,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { fetchUserReports } from '../store/statsActions';
 import { Ionicons } from '@expo/vector-icons';
+import { getImageUrl } from '../services/api';
+
+type NavigationProp = StackNavigationProp<any>;
 
 interface Report {
   id: number;
@@ -60,6 +64,7 @@ interface Report {
 }
 
 export default function ReportHistoryScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const { user, token } = useAppSelector((state) => state.auth);
   const { reportHistory, isLoading } = useAppSelector((state) => state.stats);
   const dispatch = useAppDispatch();
@@ -122,17 +127,23 @@ export default function ReportHistoryScreen() {
     </View>
   );
 
-  // Function to check if URL is a valid S3 URL
-  const isValidS3Url = (url: string | undefined): boolean => {
+  // Function to check if URL is a valid image URL
+  const isValidImageUrl = (url: string | undefined): boolean => {
     if (!url) return false;
-    return url.startsWith('https://') && (url.includes('amazonaws.com') || url.includes('presigned'));
+    // Acepta URLs completas de Cloudflare o rutas relativas
+    return url.startsWith('https://') || url.startsWith('http://') || url.startsWith('/uploads/') || url.startsWith('uploads/');
+  };
+
+  // Function to get the complete image URL
+  const getCompleteImageUrl = (url: string | undefined): string | null => {
+    return getImageUrl(url);
   };
 
   return (
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Historial de Reportes</Text>
@@ -206,7 +217,7 @@ export default function ReportHistoryScreen() {
                   <View style={[styles.statusBadge, { backgroundColor: getStatusColor(report) }]}>
                     <Text style={styles.statusText}>{getStatusText(report)}</Text>
                   </View>
-                  {(isValidS3Url(report.before_photo_url) || isValidS3Url(report.after_photo_url)) && (
+                  {(isValidImageUrl(report.before_photo_url) || isValidImageUrl(report.after_photo_url)) && (
                     <Ionicons name="images" size={16} color="#4CAF50" style={styles.photoIcon} />
                   )}
                 </View>
@@ -223,13 +234,13 @@ export default function ReportHistoryScreen() {
                   <Ionicons 
                     name="camera" 
                     size={16} 
-                    color={isValidS3Url(report.before_photo_url) ? '#4CAF50' : '#ccc'} 
+                    color={isValidImageUrl(report.before_photo_url) ? '#4CAF50' : '#ccc'} 
                   />
                   <Text style={styles.photoText}>Antes</Text>
                   <Ionicons 
                     name="camera" 
                     size={16} 
-                    color={isValidS3Url(report.after_photo_url) ? '#4CAF50' : '#ccc'} 
+                    color={isValidImageUrl(report.after_photo_url) ? '#4CAF50' : '#ccc'} 
                     style={styles.photoIcon}
                   />
                   <Text style={styles.photoText}>Después</Text>
@@ -287,9 +298,9 @@ export default function ReportHistoryScreen() {
                 <View style={styles.photosGrid}>
                   <View style={styles.photoContainer}>
                     <Text style={styles.photoTitle}>Antes del Mantenimiento</Text>
-                    {isValidS3Url(selectedReport.before_photo_url) ? (
+                    {isValidImageUrl(selectedReport.before_photo_url) ? (
                       <Image 
-                        source={{ uri: selectedReport.before_photo_url }} 
+                        source={{ uri: getCompleteImageUrl(selectedReport.before_photo_url) || undefined }} 
                         style={styles.modalPhoto}
                         resizeMode="cover"
                       />
@@ -303,9 +314,9 @@ export default function ReportHistoryScreen() {
                   
                   <View style={styles.photoContainer}>
                     <Text style={styles.photoTitle}>Después del Mantenimiento</Text>
-                    {isValidS3Url(selectedReport.after_photo_url) ? (
+                    {isValidImageUrl(selectedReport.after_photo_url) ? (
                       <Image 
-                        source={{ uri: selectedReport.after_photo_url }} 
+                        source={{ uri: getCompleteImageUrl(selectedReport.after_photo_url) || undefined }} 
                         style={styles.modalPhoto}
                         resizeMode="cover"
                       />

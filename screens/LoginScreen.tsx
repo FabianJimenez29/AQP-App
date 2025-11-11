@@ -11,9 +11,12 @@ import {
   Image,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
 import ApiService from '../services/api';
+
+type NavigationProp = StackNavigationProp<any>;
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -22,6 +25,7 @@ export default function LoginScreen() {
   const [connectionStatus, setConnectionStatus] = useState('checking');
   const [serverIP, setServerIP] = useState('');
   const dispatch = useDispatch();
+  const navigation = useNavigation<NavigationProp>();
 
   // Verificar conexión al servidor al cargar la pantalla
   useEffect(() => {
@@ -31,14 +35,13 @@ export default function LoginScreen() {
   const checkServerConnection = async () => {
     setConnectionStatus('checking');
     try {
-      await ApiService.initialize();
       const health = await ApiService.checkServerHealth();
       if (health.success) {
         setConnectionStatus('connected');
-        // Extraer IP de la URL actual del API
+        // Extraer información de la URL del Cloudflare Tunnel
         const currentUrl = ApiService.apiUrl;
-        const ipMatch = currentUrl.match(/http:\/\/([\d.]+):/);
-        setServerIP(ipMatch ? ipMatch[1] : 'desconocida');
+        const tunnelMatch = currentUrl.match(/https:\/\/(.*?)\.trycloudflare\.com/);
+        setServerIP(tunnelMatch ? `Cloudflare: ${tunnelMatch[1]}` : 'Cloudflare Tunnel');
       } else {
         setConnectionStatus('disconnected');
       }
@@ -66,7 +69,7 @@ export default function LoginScreen() {
 
       // Si el login es exitoso, continúa al dashboard
       dispatch(loginSuccess(response));
-      router.replace('dashboard' as any);
+      navigation.replace('Dashboard');
       
     } catch (error: any) {
       dispatch(loginFailure());
@@ -122,7 +125,7 @@ export default function LoginScreen() {
 
       Alert.alert(
         errorTitle,
-        `${errorMessage}\n\nCódigo de Error: ${errorCode}\nURL del Servidor: http://localhost:3001`,
+        `${errorMessage}\n\nCódigo de Error: ${errorCode}\nURL del Servidor: ${ApiService.apiUrl}`,
         [{ text: 'OK' }]
       );
     } finally {
@@ -208,8 +211,8 @@ export default function LoginScreen() {
             <TouchableOpacity 
               style={styles.quickLoginButton}
               onPress={() => {
-                setEmail('demo@aquapool.com');
-                setPassword('demo123');
+                setEmail('tech@aquapool.com');
+                setPassword('tech123');
               }}
             >
               <Text style={styles.quickLoginButtonText}>Técnico Demo</Text>

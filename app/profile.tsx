@@ -2,7 +2,8 @@ import React, { useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../store';
 import { logout } from '../store/authSlice';
@@ -10,6 +11,8 @@ import { fetchUserStats } from '../store/statsActions';
 import PoolHeader from '../components/ui/PoolHeader';
 import BottomTabBar from '../components/ui/BottomTabBar';
 import Colors from '../constants/colors';
+
+type NavigationProp = StackNavigationProp<any>;
 
 interface ProfileOption {
   id: string;
@@ -21,6 +24,7 @@ interface ProfileOption {
 }
 
 export default function Profile() {
+  const navigation = useNavigation<NavigationProp>();
   const { user } = useSelector((state: RootState) => state.auth);
   const { userStats } = useSelector((state: RootState) => state.stats);
   const dispatch = useDispatch();
@@ -30,7 +34,7 @@ export default function Profile() {
   }, [dispatch]);
 
   const handleBack = () => {
-    router.back();
+    navigation.goBack();
   };
 
   const handleLogout = () => {
@@ -44,7 +48,10 @@ export default function Profile() {
           style: 'destructive',
           onPress: () => {
             dispatch(logout());
-            router.replace('/login');
+            navigation.reset({
+              index: 0,
+              routes: [{ name: 'Login' }],
+            });
           }
         }
       ]

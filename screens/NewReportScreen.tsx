@@ -7,10 +7,13 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { startNewReport, updateCurrentReport, finishReport, setLoading, setError } from '../store/reportSlice';
 import ApiService from '../services/api';
+
+type NavigationProp = StackNavigationProp<any>;
 
 // Step Components
 import StepBasicInfo from '../components/report-steps/StepBasicInfo';
@@ -40,6 +43,7 @@ const STEPS = [
 ];
 
 export default function NewReportScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const [currentStep, setCurrentStep] = useState(0);
   const { currentReport } = useAppSelector((state) => state.report);
   const { user, token } = useAppSelector((state) => state.auth);
@@ -122,7 +126,7 @@ export default function NewReportScreen() {
                 [
                   {
                     text: 'OK',
-                    onPress: () => router.replace('dashboard' as any)
+                    onPress: () => navigation.replace('Dashboard')
                   }
                 ]
               );
@@ -176,7 +180,7 @@ export default function NewReportScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={styles.backButton}>← Atrás</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Nuevo Reporte</Text>

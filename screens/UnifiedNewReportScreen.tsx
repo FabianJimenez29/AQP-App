@@ -9,7 +9,8 @@ import {
   Alert,
   Image,
 } from 'react-native';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { startNewReport, updateCurrentReport, finishReport, setLoading, setError } from '../store/reportSlice';
 import { incrementTodayReports } from '../store/statsSlice';
@@ -18,7 +19,10 @@ import ApiService from '../services/api';
 import * as ImagePicker from 'expo-image-picker';
 import { Parameters, Chemicals, EquipmentCheck } from '../types';
 
+type NavigationProp = StackNavigationProp<any>;
+
 export default function UnifiedNewReportScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const { user, token } = useAppSelector((state) => state.auth);
   const { currentReport, isLoading } = useAppSelector((state) => state.report);
   const dispatch = useAppDispatch();
@@ -220,7 +224,7 @@ export default function UnifiedNewReportScreen() {
               Alert.alert(
                 'Éxito',
                 'Reporte enviado correctamente con imágenes subidas a S3. El número de reporte se asignó automáticamente.',
-                [{ text: 'OK', onPress: () => router.replace('dashboard' as any) }]
+                [{ text: 'OK', onPress: () => navigation.replace('Dashboard') }]
               );
 
             } catch (error: any) {
@@ -298,7 +302,7 @@ export default function UnifiedNewReportScreen() {
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color="white" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Nuevo Reporte</Text>

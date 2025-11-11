@@ -1,8 +1,11 @@
 import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
 import Colors from '../../constants/colors';
+
+type NavigationProp = StackNavigationProp<any>;
 
 interface TabItem {
   key: string;
@@ -22,32 +25,34 @@ const tabs: TabItem[] = [
     label: 'Inicio',
     icon: 'home-outline',
     iconFamily: 'Ionicons',
-    route: '/dashboard'
+    route: 'Dashboard'
   },
   {
     key: 'new-report',
     label: 'Nuevo Reporte',
     icon: 'document-text-outline',
     iconFamily: 'Ionicons',
-    route: '/unified-new-report'
+    route: 'UnifiedNewReport'
   },
   {
     key: 'products',
     label: 'Productos',
     icon: 'inventory',
     iconFamily: 'MaterialIcons',
-    route: '/products' // Nueva ruta para productos
+    route: 'Products'
   },
   {
     key: 'profile',
     label: 'Perfil',
     icon: 'person-outline',
     iconFamily: 'Ionicons',
-    route: '/profile' // Cambiar a ruta específica de perfil
+    route: 'Profile'
   }
 ];
 
 export default function BottomTabBar({ activeTab = 'home' }: BottomTabBarProps) {
+  const navigation = useNavigation<NavigationProp>();
+  
   const renderIcon = (tab: TabItem, isActive: boolean) => {
     const iconColor = isActive ? Colors.primary.blue : Colors.neutral.gray;
     const iconSize = 22;
@@ -60,7 +65,7 @@ export default function BottomTabBar({ activeTab = 'home' }: BottomTabBarProps) 
 
   const handleTabPress = (tab: TabItem) => {
     try {
-      router.push(tab.route as any);
+      navigation.navigate(tab.route);
     } catch (error) {
       console.error('Navigation error:', error);
     }

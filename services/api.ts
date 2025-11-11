@@ -1,24 +1,78 @@
 import { User, Report } from '../types';
+import { 
+  API_BASE_PATH, 
+  DEBUG_API,
+  CLOUDFLARE_TUNNEL_URL,
+  USE_CLOUDFLARE_TUNNEL
+} from '@env';
 
-// Lista de IPs comunes para probar automáticamente
-const COMMON_IPS = [
-  '192.168.0.103',   // IP actual
-  '192.168.1.232',   // IP anterior
-  '192.168.1.1',     // Router común
-  '192.168.0.1',     // Router común
-  '10.0.0.1',        // Otra red común
-];
+// Debug: Verificar que se están cargando las variables de entorno
+console.log('🔍 Variables de entorno cargadas:', {
+  API_BASE_PATH,
+  DEBUG_API,
+  CLOUDFLARE_TUNNEL_URL,
+  USE_CLOUDFLARE_TUNNEL
+});
 
-// Detectar si estamos en desarrollo y usar la IP correcta
+// Configuración simplificada solo para Cloudflare
+const ENV_CONFIG = {
+  apiBasePath: API_BASE_PATH || '/api',
+  useCloudflare: USE_CLOUDFLARE_TUNNEL === 'true',
+  cloudflareUrl: CLOUDFLARE_TUNNEL_URL,
+  debugApi: DEBUG_API === 'true'
+};
+
+console.log('⚙️ ENV_CONFIG final (Solo Cloudflare):', ENV_CONFIG);
+
+// Función simplificada para obtener la URL base del API
 const getApiBaseUrl = () => {
-  if (__DEV__) {
-    // Usar la IP actual detectada
-    return 'http://192.168.0.103:3001/api'; 
+  if (!ENV_CONFIG.cloudflareUrl) {
+    throw new Error('CLOUDFLARE_TUNNEL_URL no está configurado en .env');
   }
-  return 'http://localhost:3001/api';
+
+  const cloudflareApiUrl = `${ENV_CONFIG.cloudflareUrl}${ENV_CONFIG.apiBasePath}`;
+  
+  if (ENV_CONFIG.debugApi) {
+    console.log('🌐 Usando Cloudflare Tunnel:', {
+      cloudflareUrl: ENV_CONFIG.cloudflareUrl,
+      fullUrl: cloudflareApiUrl
+    });
+  }
+  
+  return cloudflareApiUrl;
 };
 
 const API_BASE_URL = getApiBaseUrl();
+
+// Función para obtener la URL completa de una imagen
+export const getImageUrl = (relativePath: string | null | undefined): string | null => {
+  if (!relativePath) return null;
+  
+  // Si ya es una URL completa (como las del backend nuevo), devolverla tal cual
+  if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
+    return relativePath;
+  }
+  
+  // Si viene como ruta relativa (formato antiguo /uploads/images/...)
+  // Construir la URL completa usando el Cloudflare Tunnel base
+  const baseUrl = ENV_CONFIG.cloudflareUrl; // https://prep-closure-consolidated-save.trycloudflare.com
+  
+  // Asegurarse de que la ruta comience con /
+  const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+  
+  // Construir URL completa: https://prep-closure-consolidated-save.trycloudflare.com/uploads/images/...
+  const fullUrl = `${baseUrl}${path}`;
+  
+  if (ENV_CONFIG.debugApi) {
+    console.log('🖼️ Image URL constructed:', {
+      original: relativePath,
+      baseUrl: baseUrl,
+      fullUrl: fullUrl
+    });
+  }
+  
+  return fullUrl;
+};
 
 interface LoginCredentials {
   email: string;
@@ -32,67 +86,19 @@ interface LoginResponse {
 
 class ApiService {
   private currentApiUrl: string = getApiBaseUrl();
-  private isInitialized: boolean = false;
 
   // Getter para obtener la URL actual del API
   get apiUrl(): string {
     return this.currentApiUrl;
   }
 
-  // Inicializar el servicio detectando la IP correcta
-  async initialize(): Promise<void> {
-    if (this.isInitialized) return;
-    
-    try {
-      await this.detectWorkingIP();
-      this.isInitialized = true;
-    } catch (error) {
-      this.isInitialized = true;
-    }
-  }
-
-  // Detectar automáticamente la IP correcta probando conexiones
-  async detectWorkingIP(): Promise<string> {
-    // Primero probar la IP actual configurada
-    const currentUrl = this.currentApiUrl;
-    if (await this.testConnection(currentUrl)) {
-      return currentUrl;
-    }
-
-    // Si la actual no funciona, probar otras IPs comunes
-    for (const ip of COMMON_IPS) {
-      const testUrl = `http://${ip}:3001/api`;
-      if (await this.testConnection(testUrl)) {
-        this.currentApiUrl = testUrl; // Actualizar la IP actual
-        return testUrl;
-      }
-    }
-
-    throw new Error('No se puede conectar al servidor. Verifica que esté ejecutándose y que estés en la misma red.');
-  }
-
-  // Probar conexión a una URL específica
-  private async testConnection(baseUrl: string): Promise<boolean> {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 segundos timeout
-
-      const response = await fetch(`${baseUrl}/health`, {
-        method: 'GET',
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-      return response.ok;
-    } catch (error) {
-      return false;
-    }
-  }
-
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     try {
-      // Usar la URL actual (puede haber sido detectada automáticamente)
       const url = `${this.currentApiUrl}${endpoint}`;
+      
+      if (ENV_CONFIG.debugApi) {
+        console.log('🌐 API Request:', url);
+      }
       
       const response = await fetch(url, {
         headers: {
@@ -117,6 +123,11 @@ class ApiService {
       return data;
     } catch (error) {
       console.error('❌ API request failed:', error);
+      
+      if (error instanceof Error && error.message?.includes('Network request failed')) {
+        throw new Error('No se puede conectar al servidor Cloudflare. Verifica que el tunnel esté activo.');
+      }
+      
       throw error;
     }
   }
@@ -178,34 +189,10 @@ class ApiService {
 
   // Auth
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
-    try {
-      // Intentar inicializar si no se ha hecho
-      if (!this.isInitialized) {
-        await this.initialize();
-      }
-
-      const response = await this.request<LoginResponse>('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(credentials),
-      });
-      
-      return response;
-    } catch (error: any) {
-      // Si falla, intentar detectar nueva IP y reintentar
-      if (error.message?.includes('Network request failed') || error.message?.includes('Failed to fetch')) {
-        try {
-          await this.detectWorkingIP();
-          const response = await this.request<LoginResponse>('/auth/login', {
-            method: 'POST',
-            body: JSON.stringify(credentials),
-          });
-          return response;
-        } catch (retryError) {
-          throw new Error('No se puede conectar al servidor. Verifica que esté ejecutándose y que estés en la misma red.');
-        }
-      }
-      throw error;
-    }
+    return this.request<LoginResponse>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
   }
 
   // Reports

@@ -14,9 +14,6 @@ export interface CartItem {
 }
 
 export interface CreateOrderRequest {
-  technician_name: string;
-  technician_email?: string;
-  pool_location?: string;
   items: {
     product_id: number;
     product_name: string;
@@ -26,6 +23,9 @@ export interface CreateOrderRequest {
     unit_price: number;
   }[];
   notes?: string;
+  delivery_address?: string;
+  user_id?: string; // ✅ ID del usuario que crea la orden
+  technician_name?: string; // ✅ Nombre del técnico para guardar en la base de datos
 }
 
 interface CartState {
@@ -53,9 +53,17 @@ export const createOrder = createAsyncThunk(
     try {
       const state = getState() as any;
       const token = state.auth.token;
+      const userId = state.auth.user?.id; // ✅ Obtener el ID del usuario
+      const technicianName = state.auth.user?.name; // ✅ Obtener el nombre del técnico
       
-      // Por ahora funciona sin token para pruebas
-      const response = await ApiService.createOrder(orderData, token || undefined);
+      // Incluir user_id y technician_name en los datos de la orden
+      const orderDataWithUser = {
+        ...orderData,
+        user_id: userId, // ✅ Agregar el ID del usuario
+        technician_name: technicianName, // ✅ Agregar el nombre del técnico
+      };
+      
+      const response = await ApiService.createOrder(orderDataWithUser, token || undefined);
       return response.data || response;
     } catch (error: any) {
       return rejectWithValue(error.message || 'Error al crear el pedido');

@@ -1,32 +1,27 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Provider } from 'react-redux';
 import 'react-native-reanimated';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { store } from '../store';
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
     <Provider store={store}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" options={{ headerShown: false }} />
-          <Stack.Screen name="login" options={{ headerShown: false }} />
-          <Stack.Screen name="dashboard" options={{ headerShown: false }} />
-          <Stack.Screen name="new-report" options={{ headerShown: false }} />
-          <Stack.Screen name="unified-new-report" options={{ headerShown: false }} />
-          <Stack.Screen name="report-history" options={{ headerShown: false }} />
-          <Stack.Screen name="products" options={{ headerShown: false }} />
-          <Stack.Screen name="profile" options={{ headerShown: false }} />
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
+      <Stack screenOptions={{ headerShown: false }}>
+        <Stack.Screen name="index" />
+        <Stack.Screen name="login" />
+        <Stack.Screen name="dashboard" />
+        <Stack.Screen name="new-report" />
+        <Stack.Screen name="unified-new-report" />
+        <Stack.Screen name="report-history" />
+        <Stack.Screen name="products" />
+        <Stack.Screen name="profile" />
+        <Stack.Screen name="cart" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="+not-found" />
+      </Stack>
+      <StatusBar style="auto" />
     </Provider>
   );
 }
