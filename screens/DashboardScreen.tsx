@@ -74,9 +74,8 @@ export default function DashboardScreen() {
     navigation.navigate('ReportHistory');
   };
 
-  const handleAnalytics = () => {
-    // TODO: Implementar analytics
-    Alert.alert('Próximamente', 'Analytics en desarrollo');
+  const handleProductOrder = () => {
+    navigation.navigate('Products');
   };
 
   const quickActions = [
@@ -99,11 +98,8 @@ export default function DashboardScreen() {
       title: 'Productos',
       subtitle: 'Pedidos y suministros',
       color: Colors.primary.orange,
-      onPress: () => {
-        // TODO: Navigate to products
-        Alert.alert('Productos', 'Funcionalidad de productos en desarrollo');
-      },
-    },
+      onPress: handleProductOrder,
+    }
   ];
 
   return (
