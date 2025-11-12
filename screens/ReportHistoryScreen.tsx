@@ -16,6 +16,9 @@ import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { fetchUserReports } from '../store/statsActions';
 import { Ionicons } from '@expo/vector-icons';
 import { getImageUrl } from '../services/api';
+import ApiService from '../services/api';
+import PoolHeader from '../components/ui/PoolHeader';
+import Colors from '../constants/colors';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -63,6 +66,23 @@ interface Report {
   received_by?: string;
 }
 
+interface Order {
+  id: number;
+  order_number: string;
+  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  notes?: string;
+  created_at: string;
+  technician_name?: string;
+  items?: Array<{
+    id: number;
+    quantity: number;
+    product_name: string;
+    variant_info?: string;
+    product_id?: number;
+    product_variant_id?: number;
+  }>;
+}
+
 export default function ReportHistoryScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, token } = useAppSelector((state) => state.auth);
@@ -70,22 +90,80 @@ export default function ReportHistoryScreen() {
   const dispatch = useAppDispatch();
   
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [orderModalVisible, setOrderModalVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'reports' | 'orders'>('reports');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loadingOrders, setLoadingOrders] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUserReports({ page: 1, limit: 50 }));
+    loadOrders();
   }, [dispatch]);
+
+  const loadOrders = async () => {
+    if (!token) return;
+    
+    setLoadingOrders(true);
+    try {
+      const response = await ApiService.getUserOrders(token, 1, 50);
+      if (response.success) {
+        setOrders(response.orders || []);
+      }
+    } catch (error) {
+      console.error('Error loading orders:', error);
+    } finally {
+      setLoadingOrders(false);
+    }
+  };
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await dispatch(fetchUserReports({ page: 1, limit: 50 }));
+    await loadOrders();
     setRefreshing(false);
   };
 
   const openReportDetail = (report: Report) => {
     setSelectedReport(report);
     setModalVisible(true);
+  };
+
+  const openOrderDetail = (order: Order) => {
+    setSelectedOrder(order);
+    setOrderModalVisible(true);
+  };
+
+  const getOrderStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return '#4CAF50';
+      case 'processing':
+        return '#2196F3';
+      case 'pending':
+        return '#FF9800';
+      case 'cancelled':
+        return '#f44336';
+      default:
+        return '#9E9E9E';
+    }
+  };
+
+  const getOrderStatusText = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return 'Completado';
+      case 'processing':
+        return 'En Proceso';
+      case 'pending':
+        return 'Pendiente';
+      case 'cancelled':
+        return 'Cancelado';
+      default:
+        return 'Desconocido';
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -141,71 +219,133 @@ export default function ReportHistoryScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="white" />
+      <PoolHeader 
+        title="Historial de Reportes"
+        showBack={true}
+        onBack={() => navigation.goBack()}
+        rightButton={{
+          icon: 'refresh',
+          onPress: handleRefresh
+        }}
+      />
+
+      {/* Tabs */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'reports' && styles.activeTab]}
+          onPress={() => setActiveTab('reports')}
+        >
+          <Ionicons 
+            name="document-text" 
+            size={20} 
+            color={activeTab === 'reports' ? Colors.primary.blue : '#666'} 
+          />
+          <Text style={[styles.tabText, activeTab === 'reports' && styles.activeTabText]}>
+            Reportes
+          </Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Historial de Reportes</Text>
-        <TouchableOpacity onPress={handleRefresh} style={styles.refreshButton}>
-          <Ionicons name="refresh" size={24} color="white" />
+        
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'orders' && styles.activeTab]}
+          onPress={() => setActiveTab('orders')}
+        >
+          <Ionicons 
+            name="cart" 
+            size={20} 
+            color={activeTab === 'orders' ? Colors.primary.blue : '#666'} 
+          />
+          <Text style={[styles.tabText, activeTab === 'orders' && styles.activeTabText]}>
+            Órdenes
+          </Text>
         </TouchableOpacity>
       </View>
 
       {/* Stats Summary */}
       <View style={styles.summarySection}>
-        <Text style={styles.summaryTitle}>Resumen de Actividad</Text>
+        <Text style={styles.summaryTitle}>
+          {activeTab === 'reports' ? 'Resumen de Reportes' : 'Resumen de Órdenes'}
+        </Text>
         <View style={styles.summaryGrid}>
-          <View style={styles.summaryCard}>
-            <Ionicons name="document-text" size={24} color="#1976D2" />
-            <Text style={styles.summaryNumber}>{reportHistory?.reports?.length || 0}</Text>
-            <Text style={styles.summaryLabel}>Total Reportes</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Ionicons name="calendar" size={24} color="#4CAF50" />
-            <Text style={styles.summaryNumber}>
-              {reportHistory?.reports?.filter(r => {
-                const today = new Date();
-                const reportDate = new Date(r.created_at);
-                return today.toDateString() === reportDate.toDateString();
-              }).length || 0}
-            </Text>
-            <Text style={styles.summaryLabel}>Hoy</Text>
-          </View>
-          <View style={styles.summaryCard}>
-            <Ionicons name="calendar" size={24} color="#FF9800" />
-            <Text style={styles.summaryNumber}>
-              {reportHistory?.reports?.filter(r => {
-                const weekAgo = new Date();
-                weekAgo.setDate(weekAgo.getDate() - 7);
-                const reportDate = new Date(r.created_at);
-                return reportDate >= weekAgo;
-              }).length || 0}
-            </Text>
-            <Text style={styles.summaryLabel}>Esta Semana</Text>
-          </View>
+          {activeTab === 'reports' ? (
+            <>
+              <View style={styles.summaryCard}>
+                <Ionicons name="document-text" size={24} color="#1976D2" />
+                <Text style={styles.summaryNumber}>{reportHistory?.reports?.length || 0}</Text>
+                <Text style={styles.summaryLabel}>Total Reportes</Text>
+              </View>
+              <View style={styles.summaryCard}>
+                <Ionicons name="calendar" size={24} color="#4CAF50" />
+                <Text style={styles.summaryNumber}>
+                  {reportHistory?.reports?.filter(r => {
+                    const today = new Date();
+                    const reportDate = new Date(r.created_at);
+                    return today.toDateString() === reportDate.toDateString();
+                  }).length || 0}
+                </Text>
+                <Text style={styles.summaryLabel}>Hoy</Text>
+              </View>
+              <View style={styles.summaryCard}>
+                <Ionicons name="calendar" size={24} color="#FF9800" />
+                <Text style={styles.summaryNumber}>
+                  {reportHistory?.reports?.filter(r => {
+                    const weekAgo = new Date();
+                    weekAgo.setDate(weekAgo.getDate() - 7);
+                    const reportDate = new Date(r.created_at);
+                    return reportDate >= weekAgo;
+                  }).length || 0}
+                </Text>
+                <Text style={styles.summaryLabel}>Esta Semana</Text>
+              </View>
+            </>
+          ) : (
+            <>
+              <View style={styles.summaryCard}>
+                <Ionicons name="cart" size={24} color="#1976D2" />
+                <Text style={styles.summaryNumber}>{orders.length || 0}</Text>
+                <Text style={styles.summaryLabel}>Total Órdenes</Text>
+              </View>
+              <View style={styles.summaryCard}>
+                <Ionicons name="time" size={24} color="#FF9800" />
+                <Text style={styles.summaryNumber}>
+                  {orders.filter(o => o.status === 'pending' || o.status === 'processing').length || 0}
+                </Text>
+                <Text style={styles.summaryLabel}>Pendientes</Text>
+              </View>
+              <View style={styles.summaryCard}>
+                <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+                <Text style={styles.summaryNumber}>
+                  {orders.filter(o => o.status === 'completed').length || 0}
+                </Text>
+                <Text style={styles.summaryLabel}>Completadas</Text>
+              </View>
+            </>
+          )}
         </View>
       </View>
 
-      {/* Reports List */}
       <ScrollView 
         style={styles.reportsList}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={handleRefresh}
+            colors={['#1976D2']}
+          />
         }
       >
-        {isLoading && (!reportHistory?.reports || reportHistory.reports.length === 0) ? (
-          <View style={styles.loadingContainer}>
-            <Text style={styles.loadingText}>Cargando reportes...</Text>
-          </View>
-        ) : (!reportHistory?.reports || reportHistory.reports.length === 0) ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="document-outline" size={64} color="#ccc" />
-            <Text style={styles.emptyText}>No hay reportes registrados</Text>
-            <Text style={styles.emptySubtext}>Tus reportes aparecerán aquí</Text>
-          </View>
-        ) : (
-          reportHistory.reports.map((report: any, index: number) => (
+        {activeTab === 'reports' ? (
+          isLoading && (!reportHistory?.reports || reportHistory.reports.length === 0) ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Cargando reportes...</Text>
+            </View>
+          ) : (!reportHistory?.reports || reportHistory.reports.length === 0) ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="document-outline" size={64} color="#ccc" />
+              <Text style={styles.emptyText}>No hay reportes registrados</Text>
+              <Text style={styles.emptySubtext}>Tus reportes aparecerán aquí</Text>
+            </View>
+          ) : (
+            reportHistory.reports.map((report: any, index: number) => (
             <TouchableOpacity
               key={report.id}
               style={styles.reportCard}
@@ -249,8 +389,121 @@ export default function ReportHistoryScreen() {
               </View>
             </TouchableOpacity>
           ))
+          )
+        ) : (
+          // Orders Tab
+          loadingOrders ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Cargando órdenes...</Text>
+            </View>
+          ) : orders.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="cart-outline" size={64} color="#ccc" />
+              <Text style={styles.emptyText}>No hay órdenes</Text>
+              <Text style={styles.emptySubtext}>Crea tu primera orden desde Productos</Text>
+            </View>
+          ) : (
+            orders.map((order) => (
+              <TouchableOpacity
+                key={order.id}
+                style={styles.reportCard}
+                onPress={() => openOrderDetail(order)}
+              >
+                <View style={styles.reportHeader}>
+                  <View>
+                    <Text style={styles.reportNumber}>{order.order_number}</Text>
+                    <Text style={styles.reportClient}>
+                      {order.items?.length || 0} producto(s)
+                    </Text>
+                    <Text style={styles.reportDate}>{formatDate(order.created_at)}</Text>
+                  </View>
+                  <View style={[styles.statusBadge, { backgroundColor: getOrderStatusColor(order.status) }]}>
+                    <Text style={styles.statusText}>{getOrderStatusText(order.status)}</Text>
+                  </View>
+                </View>
+                <View style={styles.reportFooter}>
+                  <View>
+                    <Text style={styles.reportLocation}>
+                      {order.technician_name || 'Técnico'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#666" />
+                </View>
+              </TouchableOpacity>
+            ))
+          )
         )}
       </ScrollView>
+
+      {/* Order Detail Modal */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={orderModalVisible}
+        onRequestClose={() => setOrderModalVisible(false)}
+      >
+        {selectedOrder && (
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setOrderModalVisible(false)} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="white" />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Detalle de la Orden</Text>
+              <View style={styles.placeholder} />
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Información General</Text>
+                <View style={styles.infoGrid}>
+                  <Text style={styles.infoLabel}>Número de Orden:</Text>
+                  <Text style={styles.infoValue}>{selectedOrder.order_number}</Text>
+                  
+                  <Text style={styles.infoLabel}>Estado:</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getOrderStatusColor(selectedOrder.status) }]}>
+                    <Text style={styles.statusText}>{getOrderStatusText(selectedOrder.status)}</Text>
+                  </View>
+                  
+                  <Text style={styles.infoLabel}>Fecha:</Text>
+                  <Text style={styles.infoValue}>{formatDate(selectedOrder.created_at)}</Text>
+                  
+                  {selectedOrder.technician_name && (
+                    <>
+                      <Text style={styles.infoLabel}>Técnico:</Text>
+                      <Text style={styles.infoValue}>{selectedOrder.technician_name}</Text>
+                    </>
+                  )}
+                  
+                  {selectedOrder.notes && (
+                    <>
+                      <Text style={styles.infoLabel}>Notas:</Text>
+                      <Text style={styles.infoValue}>{selectedOrder.notes}</Text>
+                    </>
+                  )}
+                </View>
+              </View>
+
+              {/* Order Items */}
+              {selectedOrder.items && selectedOrder.items.length > 0 && (
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Productos</Text>
+                  {selectedOrder.items.map((item, index) => (
+                    <View key={index} style={styles.orderItem}>
+                      <View style={styles.orderItemInfo}>
+                        <Text style={styles.orderItemName}>{item.product_name}</Text>
+                        <Text style={styles.orderItemDetails}>
+                          {item.variant_info && `${item.variant_info} · `}
+                          Cantidad: {item.quantity}
+                        </Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </ScrollView>
+          </View>
+        )}
+      </Modal>
 
       {/* Report Detail Modal */}
       <Modal
@@ -416,35 +669,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
-  header: {
-    backgroundColor: '#1976D2',
-    paddingTop: 50,
-    paddingBottom: 20,
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'white',
     paddingHorizontal: 20,
+    paddingVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  tab: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginHorizontal: 5,
+    backgroundColor: '#f5f5f5',
   },
-  refreshButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
+  activeTab: {
+    backgroundColor: Colors.primary.blue + '15',
   },
-  headerTitle: {
-    color: 'white',
-    fontSize: 20,
+  tabText: {
+    fontSize: 14,
     fontWeight: '600',
+    color: '#666',
+    marginLeft: 8,
+  },
+  activeTabText: {
+    color: Colors.primary.blue,
   },
   summarySection: {
     backgroundColor: 'white',
@@ -552,13 +808,13 @@ const styles = StyleSheet.create({
     marginRight: 10,
   },
   statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
   },
   statusText: {
     color: 'white',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
   },
   reportDate: {
@@ -726,5 +982,62 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#1a1a1a',
     lineHeight: 20,
+  },
+  // Order styles
+  reportClient: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  reportLocation: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 4,
+  },
+  orderItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  orderItemInfo: {
+    flex: 1,
+  },
+  orderItemName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  orderItemDetails: {
+    fontSize: 13,
+    color: '#666',
+  },
+  orderItemPrice: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: Colors.primary.blue,
+  },
+  orderTotal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 15,
+    paddingTop: 15,
+    borderTopWidth: 2,
+    borderTopColor: '#e0e0e0',
+  },
+  orderTotalLabel: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  orderTotalAmount: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: Colors.primary.blue,
   },
 });

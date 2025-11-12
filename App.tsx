@@ -11,9 +11,9 @@ import DashboardScreen from './screens/DashboardScreen';
 import NewReportScreen from './screens/NewReportScreen';
 import UnifiedNewReportScreen from './screens/UnifiedNewReportScreen';
 import ReportHistoryScreen from './screens/ReportHistoryScreen';
-import ProductsScreen from './app/products';
-import CartScreen from './app/cart';
-import ProfileScreen from './app/profile';
+import ProfileScreen from './screens/ProfileScreen';
+import ProductsScreen from './DISABLED_app-old-routes/products';
+import CartScreen from './DISABLED_app-old-routes/cart';
 
 const Stack = createStackNavigator();
 

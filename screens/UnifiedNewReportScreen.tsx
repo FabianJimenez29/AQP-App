@@ -18,6 +18,8 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import ApiService from '../services/api';
 import * as ImagePicker from 'expo-image-picker';
 import { Parameters, Chemicals, EquipmentCheck } from '../types';
+import PoolHeader from '../components/ui/PoolHeader';
+import Colors from '../constants/colors';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -299,17 +301,16 @@ export default function UnifiedNewReportScreen() {
   ];
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={24} color="white" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Nuevo Reporte</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <View style={styles.content}>
+    <View style={styles.fullContainer}>
+      <PoolHeader 
+        title="Nuevo Reporte"
+        subtitle="Completa todos los campos"
+        showBack={true}
+        onBack={() => navigation.goBack()}
+      />
+      
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
         {/* Basic Information Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -619,39 +620,18 @@ export default function UnifiedNewReportScreen() {
           {!isLoading && <Ionicons name="send" size={20} color="white" style={styles.submitIcon} />}
         </TouchableOpacity>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  fullContainer: {
     flex: 1,
     backgroundColor: '#f8f9fa',
   },
-  header: {
-    backgroundColor: '#1976D2',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: '600',
-  },
-  placeholder: {
-    width: 40,
+  container: {
+    flex: 1,
   },
   content: {
     padding: 20,

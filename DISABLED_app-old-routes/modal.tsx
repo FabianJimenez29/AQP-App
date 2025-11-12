@@ -1,13 +1,22 @@
-import { Link } from 'expo-router';
-import { StyleSheet, View, Text } from 'react-native';
+import React from 'react';
+import { StyleSheet, View, Text, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { StackNavigationProp } from '@react-navigation/stack';
+
+type NavigationProp = StackNavigationProp<any>;
 
 export default function ModalScreen() {
+  const navigation = useNavigation<NavigationProp>();
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>This is a modal</Text>
-      <Link href="/" dismissTo style={styles.link}>
+      <TouchableOpacity 
+        onPress={() => navigation.navigate('Dashboard')} 
+        style={styles.link}
+      >
         <Text style={styles.linkText}>Go to home screen</Text>
-      </Link>
+      </TouchableOpacity>
     </View>
   );
 }

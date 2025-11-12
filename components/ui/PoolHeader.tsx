@@ -11,6 +11,10 @@ interface PoolHeaderProps {
   onLogout?: () => void;
   showBack?: boolean;
   onBack?: () => void;
+  rightButton?: {
+    icon: keyof typeof Ionicons.glyphMap;
+    onPress: () => void;
+  };
 }
 
 export default function PoolHeader({ 
@@ -19,7 +23,8 @@ export default function PoolHeader({
   showLogout = false, 
   onLogout,
   showBack = false,
-  onBack 
+  onBack,
+  rightButton
 }: PoolHeaderProps) {
   const insets = useSafeAreaInsets();
   
@@ -50,6 +55,10 @@ export default function PoolHeader({
           {showLogout ? (
             <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
               <Ionicons name="log-out-outline" size={22} color={Colors.neutral.white} />
+            </TouchableOpacity>
+          ) : rightButton ? (
+            <TouchableOpacity style={styles.logoutButton} onPress={rightButton.onPress}>
+              <Ionicons name={rightButton.icon} size={22} color={Colors.neutral.white} />
             </TouchableOpacity>
           ) : (
             <View style={styles.spacer} />

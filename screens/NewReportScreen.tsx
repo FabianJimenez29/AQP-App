@@ -12,6 +12,8 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { startNewReport, updateCurrentReport, finishReport, setLoading, setError } from '../store/reportSlice';
 import ApiService from '../services/api';
+import PoolHeader from '../components/ui/PoolHeader';
+import Colors from '../constants/colors';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -179,30 +181,26 @@ export default function NewReportScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={styles.backButton}>← Atrás</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Nuevo Reporte</Text>
-        <View style={styles.placeholder} />
-      </View>
-
-      <View style={styles.progressContainer}>
-        <Text style={styles.stepText}>
-          Paso {currentStep + 1} de {STEPS.length}
-        </Text>
-        <Text style={styles.stepTitle}>{STEPS[currentStep]}</Text>
-        <View style={styles.progressBar}>
-          <View
-            style={[
-              styles.progressFill,
-              { width: `${((currentStep + 1) / STEPS.length) * 100}%` },
-            ]}
-          />
-        </View>
-      </View>
+      <PoolHeader 
+        title="Nuevo Reporte"
+        subtitle={`Paso ${currentStep + 1} de ${STEPS.length}: ${STEPS[currentStep]}`}
+        showBack={true}
+        onBack={() => navigation.goBack()}
+      />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Progress Indicator */}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${((currentStep + 1) / STEPS.length) * 100}%` },
+              ]}
+            />
+          </View>
+        </View>
+
         {renderStep()}
       </ScrollView>
 
@@ -230,65 +228,34 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
-    backgroundColor: '#2196F3',
-    paddingTop: 50,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  backButton: {
-    color: 'white',
-    fontSize: 16,
-  },
-  title: {
-    color: 'white',
-    fontSize: 20,
-    fontWeight: 'bold',
-  },
-  placeholder: {
-    width: 50,
+  content: {
+    flex: 1,
   },
   progressContainer: {
     backgroundColor: 'white',
-    padding: 20,
+    padding: 15,
+    marginHorizontal: 15,
+    marginTop: 15,
+    marginBottom: 10,
+    borderRadius: 10,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
       height: 2,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  stepText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-  },
-  stepTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    marginVertical: 10,
-    color: '#333',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 2,
   },
   progressBar: {
     height: 6,
     backgroundColor: '#e0e0e0',
     borderRadius: 3,
-    marginTop: 10,
   },
   progressFill: {
     height: '100%',
     backgroundColor: '#2196F3',
     borderRadius: 3,
-  },
-  content: {
-    flex: 1,
-    padding: 20,
   },
   navigationButtons: {
     flexDirection: 'row',

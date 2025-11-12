@@ -7,9 +7,18 @@
     "icon": "./assets/images/icon.png",
     "scheme": "aqpapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
+    "runtimeVersion": {
+      "policy": "nativeVersion"
+    },
+    "updates": {
+      "enabled": false,
+      "checkAutomatically": "OFF",
+      "fallbackToCacheTimeout": 0
+    },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.aquapool.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -18,15 +27,15 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
+      "package": "com.aquapool.app",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "static",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      "expo-router",
       [
         "expo-splash-screen",
         {
@@ -39,10 +48,6 @@
           }
         }
       ]
-    ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": false
-    }
+    ]
   }
 }

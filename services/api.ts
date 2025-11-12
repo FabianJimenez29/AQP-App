@@ -452,6 +452,16 @@ class ApiService {
       },
     });
   }
+
+  // Get app version from backend
+  async getAppVersion(): Promise<{
+    success: boolean;
+    version: string;
+    name: string;
+    description: string;
+  }> {
+    return this.get('/version');
+  }
 }
 
 export default new ApiService();
