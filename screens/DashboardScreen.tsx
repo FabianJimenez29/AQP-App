@@ -7,6 +7,7 @@ import {
   ScrollView,
   Alert,
   RefreshControl,
+  Image,
 } from 'react-native';
 
 import { useNavigation } from '@react-navigation/native';
@@ -15,10 +16,9 @@ import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { logout } from '../store/authSlice';
 import { fetchUserStats, fetchUserReports } from '../store/statsActions';
 import { incrementTodayReports } from '../store/statsSlice';
-import { Ionicons, MaterialIcons, FontAwesome5 } from '@expo/vector-icons';
-import PoolHeader from '../components/ui/PoolHeader';
-import BottomTabBar from '../components/ui/BottomTabBar';
+import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import Colors from '../constants/colors';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -27,18 +27,15 @@ export default function DashboardScreen() {
   const { user } = useAppSelector((state) => state.auth);
   const { userStats, reportHistory, isLoading, lastUpdate } = useAppSelector((state) => state.stats);
   const dispatch = useAppDispatch();
+  const insets = useSafeAreaInsets();
 
-  // Auto-actualizar estadísticas al cargar y cada 5 minutos
   useEffect(() => {
     const loadStats = () => {
       dispatch(fetchUserStats());
-      dispatch(fetchUserReports({ page: 1, limit: 3 })); // Solo los últimos 3 para el dashboard
+      dispatch(fetchUserReports({ page: 1, limit: 5 }));
     };
 
-    // Cargar inmediatamente
     loadStats();
-
-    // Configurar actualización automática cada 5 minutos
     const interval = setInterval(loadStats, 5 * 60 * 1000);
 
     return () => clearInterval(interval);
@@ -46,7 +43,7 @@ export default function DashboardScreen() {
 
   const onRefresh = () => {
     dispatch(fetchUserStats());
-    dispatch(fetchUserReports({ page: 1, limit: 3 }));
+    dispatch(fetchUserReports({ page: 1, limit: 5 }));
   };
 
   const handleLogout = () => {
@@ -78,41 +75,54 @@ export default function DashboardScreen() {
     navigation.navigate('Products');
   };
 
-  const quickActions = [
-    {
-      icon: 'add-circle-outline',
-      title: 'Nuevo Reporte',
-      subtitle: 'Crear reporte de mantenimiento',
-      color: Colors.primary.blue,
-      onPress: handleNewReport,
-    },
-    {
-      icon: 'document-text-outline',
-      title: 'Ver Reportes',
-      subtitle: 'Historial de reportes',
-      color: Colors.primary.green,
-      onPress: handleViewReports,
-    },
-    {
-      icon: 'storefront-outline',
-      title: 'Productos',
-      subtitle: 'Pedidos y suministros',
-      color: Colors.primary.orange,
-      onPress: handleProductOrder,
-    }
-  ];
+  const handleProfile = () => {
+    navigation.navigate('Profile');
+  };
+
+  const getCurrentGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return '¡Buenos días!';
+    if (hour < 19) return '¡Buenas tardes!';
+    return '¡Buenas noches!';
+  };
 
   return (
     <View style={styles.container}>
-      <PoolHeader 
-        title="Panel de Control" 
-        subtitle={`Bienvenido, ${user?.name || 'Usuario'}`}
-        showLogout={true} 
-        onLogout={handleLogout}
-      />
-      
+      {/* Header Moderno */}
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 10, 50) }]}>
+        <View style={styles.headerTop}>
+          <View style={styles.logoSection}>
+            <Image 
+              source={require('../assets/images/AQPLogoBlack.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+          <View style={styles.headerActions}>
+            <TouchableOpacity style={styles.notificationButton}>
+              <Ionicons name="notifications-outline" size={24} color="#1a1a1a" />
+              <View style={styles.notificationBadge}>
+                <Text style={styles.notificationBadgeText}>3</Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.profileButton} onPress={handleProfile}>
+              <View style={styles.profileAvatar}>
+                <Text style={styles.profileInitial}>
+                  {user?.name?.charAt(0).toUpperCase() || 'U'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+        
+        <View style={styles.greetingSection}>
+          <Text style={styles.greetingText}>{getCurrentGreeting()}</Text>
+          <Text style={styles.userName}>{user?.name || 'Usuario'}</Text>
+        </View>
+      </View>
+
       <ScrollView 
-        style={styles.container} 
+        style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -123,102 +133,173 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Header Section eliminado - ahora usa PoolHeader */}
-
-        {/* Stats Section */}
+        {/* Stats Cards Modernos */}
         <View style={styles.statsSection}>
-          <Text style={styles.sectionTitle}>Resumen de Actividad</Text>
           <View style={styles.statsGrid}>
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: Colors.primary.blue + '20' }]}>
-                <MaterialIcons name="assignment" size={24} color={Colors.primary.blue} />
+            <View style={[styles.statCard, styles.statCardPrimary]}>
+              <View style={styles.statCardHeader}>
+                <View style={styles.statIconContainer}>
+                  <MaterialIcons name="description" size={24} color="#0066CC" />
+                </View>
+                <TouchableOpacity>
+                  <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
+                </TouchableOpacity>
               </View>
               <Text style={styles.statNumber}>{userStats?.totalReports || 0}</Text>
-              <Text style={styles.statLabel}>Total Reportes</Text>
+              <Text style={styles.statLabel}>Total de Reportes</Text>
+              <View style={styles.statTrend}>
+                <Ionicons name="trending-up" size={14} color="#4caf50" />
+                <Text style={styles.statTrendText}>+12% este mes</Text>
+              </View>
             </View>
-            
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: Colors.primary.green + '20' }]}>
-                <Ionicons name="today-outline" size={24} color={Colors.primary.green} />
+
+            <View style={[styles.statCard, styles.statCardSuccess]}>
+              <View style={styles.statCardHeader}>
+                <View style={[styles.statIconContainer, styles.statIconSuccess]}>
+                  <Ionicons name="calendar-outline" size={24} color="#4caf50" />
+                </View>
               </View>
               <Text style={styles.statNumber}>{userStats?.todayReports || 0}</Text>
-              <Text style={styles.statLabel}>Hoy</Text>
+              <Text style={styles.statLabel}>Reportes Hoy</Text>
             </View>
-            
-            <View style={styles.statCard}>
-              <View style={[styles.statIcon, { backgroundColor: Colors.primary.orange + '20' }]}>
-                <Ionicons name="calendar-outline" size={24} color={Colors.primary.orange} />
+          </View>
+
+          <View style={styles.statsGrid}>
+            <View style={[styles.statCard, styles.statCardWarning]}>
+              <View style={styles.statCardHeader}>
+                <View style={[styles.statIconContainer, styles.statIconWarning]}>
+                  <MaterialCommunityIcons name="calendar-week" size={24} color="#FF9800" />
+                </View>
               </View>
               <Text style={styles.statNumber}>{userStats?.weekReports || 0}</Text>
               <Text style={styles.statLabel}>Esta Semana</Text>
             </View>
-          </View>
-        </View>
 
-        {/* Quick Actions Section */}
-        <View style={styles.actionsSection}>
-          <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
-          <View style={styles.actionsGrid}>
-            {quickActions.map((action, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.actionCard}
-                onPress={action.onPress}
-                activeOpacity={0.7}
-              >
-                <View style={[styles.actionIcon, { backgroundColor: `${action.color}20` }]}>
-                  <Ionicons name={action.icon as any} size={28} color={action.color} />
+            <View style={[styles.statCard, styles.statCardInfo]}>
+              <View style={styles.statCardHeader}>
+                <View style={[styles.statIconContainer, styles.statIconInfo]}>
+                  <Ionicons name="time-outline" size={24} color="#2196F3" />
                 </View>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-                <Text style={styles.actionSubtitle}>{action.subtitle}</Text>
-              </TouchableOpacity>
-            ))}
+              </View>
+              <Text style={styles.statNumber}>8</Text>
+              <Text style={styles.statLabel}>Pendientes</Text>
+            </View>
           </View>
         </View>
 
-        {/* Recent Reports Section */}
-        <View style={styles.recentSection}>
+        {/* Acciones Rápidas con nuevo diseño */}
+        <View style={styles.actionsSection}>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Reportes Recientes</Text>
+            <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
+            <TouchableOpacity>
+              <Text style={styles.seeAllText}>Ver todo</Text>
+            </TouchableOpacity>
           </View>
           
-          {reportHistory && reportHistory.reports.length > 0 ? (
-            reportHistory.reports.map((report: any, index: number) => (
-              <View key={index} style={styles.reportCard}>
-                <View style={styles.reportIcon}>
-                  <FontAwesome5 name="clipboard-check" size={20} color={Colors.primary.blue} />
-                </View>
-                <View style={styles.reportContent}>
-                  <Text style={styles.reportNumber}>Reporte {report.report_number}</Text>
-                  <Text style={styles.reportClient}>{report.status || 'Completado'}</Text>
-                  <Text style={styles.reportLocation}>
-                    <Ionicons name="location-outline" size={12} color="#666" /> {report.location || 'Ubicación no especificada'}
-                  </Text>
-                  <Text style={styles.reportDate}>
-                    {new Date(report.created_at).toLocaleDateString('es-ES')}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#ccc" />
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.actionButtonPrimary]}
+              onPress={handleNewReport}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionIconWrapper}>
+                <Ionicons name="add-circle" size={32} color="#0066CC" />
               </View>
+              <Text style={styles.actionTitle}>Nuevo</Text>
+              <Text style={styles.actionSubtitle}>Reporte</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.actionButtonSuccess]}
+              onPress={handleViewReports}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionIconWrapper}>
+                <Ionicons name="document-text" size={32} color="#4caf50" />
+              </View>
+              <Text style={styles.actionTitle}>Ver</Text>
+              <Text style={styles.actionSubtitle}>Historial</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.actionButtonWarning]}
+              onPress={handleProductOrder}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionIconWrapper}>
+                <Ionicons name="storefront" size={32} color="#FF9800" />
+              </View>
+              <Text style={styles.actionTitle}>Pedidos</Text>
+              <Text style={styles.actionSubtitle}>Productos</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.actionButtonDanger]}
+              onPress={handleLogout}
+              activeOpacity={0.7}
+            >
+              <View style={styles.actionIconWrapper}>
+                <Ionicons name="log-out" size={32} color="#f44336" />
+              </View>
+              <Text style={styles.actionTitle}>Cerrar</Text>
+              <Text style={styles.actionSubtitle}>Sesión</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Actividad Reciente */}
+        <View style={styles.activitySection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Actividad Reciente</Text>
+            <TouchableOpacity onPress={handleViewReports}>
+              <Text style={styles.seeAllText}>Ver todo</Text>
+            </TouchableOpacity>
+          </View>
+
+          {reportHistory && reportHistory.reports.length > 0 ? (
+            reportHistory.reports.slice(0, 5).map((report: any, index: number) => (
+              <TouchableOpacity 
+                key={index} 
+                style={styles.activityCard}
+                activeOpacity={0.7}
+              >
+                <View style={styles.activityIconContainer}>
+                  <MaterialIcons name="description" size={20} color="#0066CC" />
+                </View>
+                <View style={styles.activityContent}>
+                  <Text style={styles.activityTitle}>Reporte {report.report_number}</Text>
+                  <Text style={styles.activitySubtitle}>
+                    {report.location || 'Sin ubicación'} • {new Date(report.created_at).toLocaleDateString('es-ES', { 
+                      day: 'numeric', 
+                      month: 'short' 
+                    })}
+                  </Text>
+                </View>
+                <View style={styles.activityStatusBadge}>
+                  <Text style={styles.activityStatusText}>Completado</Text>
+                </View>
+              </TouchableOpacity>
             ))
           ) : (
             <View style={styles.emptyState}>
-              <View style={styles.emptyIcon}>
-                <MaterialIcons name="assignment" size={48} color="#ccc" />
+              <View style={styles.emptyIconContainer}>
+                <MaterialIcons name="inbox" size={64} color="#e0e0e0" />
               </View>
-              <Text style={styles.emptyTitle}>No hay reportes</Text>
+              <Text style={styles.emptyTitle}>No hay reportes recientes</Text>
               <Text style={styles.emptySubtitle}>Crea tu primer reporte de mantenimiento</Text>
-              <TouchableOpacity style={styles.emptyAction} onPress={handleNewReport}>
-                <Text style={styles.emptyActionText}>Crear Reporte</Text>
+              <TouchableOpacity 
+                style={styles.emptyButton}
+                onPress={handleNewReport}
+              >
+                <Ionicons name="add-circle" size={20} color="white" />
+                <Text style={styles.emptyButtonText}>Crear Reporte</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
 
-        <View style={{ height: 80 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
-
-      <BottomTabBar activeTab="home" />
     </View>
   );
 }
@@ -226,210 +307,345 @@ export default function DashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.neutral.lightGray,
+    backgroundColor: '#f5f7fa',
   },
-  // Stats Section
-  statsSection: {
-    padding: 20,
-    paddingTop: 25,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.neutral.darkGray,
-    marginBottom: 15,
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  statCard: {
-    backgroundColor: Colors.neutral.white,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
+  scrollView: {
     flex: 1,
-    marginHorizontal: 4,
+  },
+  
+  // Header Styles
+  header: {
+    backgroundColor: 'white',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 3,
   },
-  statIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  headerTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  logoSection: {
+    flex: 1,
+  },
+  logo: {
+    width: 120,
+    height: 40,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  notificationButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f5f7fa',
     justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  notificationBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    backgroundColor: '#f44336',
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'white',
+  },
+  notificationBadgeText: {
+    color: 'white',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  profileButton: {
+    width: 40,
+    height: 40,
+  },
+  profileAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#0066CC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  profileInitial: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  greetingSection: {
+    marginTop: 4,
+  },
+  greetingText: {
+    fontSize: 15,
+    color: '#666',
+    marginBottom: 4,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  
+  // Stats Section
+  statsSection: {
+    padding: 20,
+    paddingTop: 20,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 16,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  statCardPrimary: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#0066CC',
+  },
+  statCardSuccess: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#4caf50',
+  },
+  statCardWarning: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF9800',
+  },
+  statCardInfo: {
+    borderLeftWidth: 4,
+    borderLeftColor: '#2196F3',
+  },
+  statCardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 12,
   },
+  statIconContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#f0f7ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  statIconSuccess: {
+    backgroundColor: '#f1f8f4',
+  },
+  statIconWarning: {
+    backgroundColor: '#fff8f0',
+  },
+  statIconInfo: {
+    backgroundColor: '#f0f5ff',
+  },
   statNumber: {
-    fontSize: 24,
+    fontSize: 32,
     fontWeight: '700',
-    color: Colors.neutral.darkGray,
+    color: '#1a1a1a',
     marginBottom: 4,
   },
   statLabel: {
-    fontSize: 12,
-    color: Colors.neutral.gray,
-    textAlign: 'center',
+    fontSize: 13,
+    color: '#666',
     fontWeight: '500',
+  },
+  statTrend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 4,
+  },
+  statTrendText: {
+    fontSize: 12,
+    color: '#4caf50',
+    fontWeight: '600',
   },
   
   // Actions Section
   actionsSection: {
     paddingHorizontal: 20,
-    paddingBottom: 25,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  actionCard: {
-    backgroundColor: Colors.neutral.white,
-    borderRadius: 16,
-    padding: 18,
-    alignItems: 'center',
-    flex: 1,
-    marginHorizontal: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  actionIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  actionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: Colors.neutral.darkGray,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  actionSubtitle: {
-    fontSize: 10,
-    color: Colors.neutral.gray,
-    textAlign: 'center',
-    lineHeight: 14,
-  },
-  
-  // Recent Reports Section
-  recentSection: {
-    paddingHorizontal: 20,
-    paddingBottom: 30,
+    paddingBottom: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 16,
   },
-  viewAllText: {
+  seeAllText: {
     fontSize: 14,
-    color: Colors.primary.blue,
+    color: '#0066CC',
     fontWeight: '600',
   },
-  reportCard: {
-    backgroundColor: Colors.neutral.white,
+  actionsGrid: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: 'white',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  actionButtonPrimary: {
+    borderTopWidth: 3,
+    borderTopColor: '#0066CC',
+  },
+  actionButtonSuccess: {
+    borderTopWidth: 3,
+    borderTopColor: '#4caf50',
+  },
+  actionButtonWarning: {
+    borderTopWidth: 3,
+    borderTopColor: '#FF9800',
+  },
+  actionButtonDanger: {
+    borderTopWidth: 3,
+    borderTopColor: '#f44336',
+  },
+  actionIconWrapper: {
+    marginBottom: 8,
+  },
+  actionTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 2,
+  },
+  actionSubtitle: {
+    fontSize: 11,
+    color: '#666',
+    textAlign: 'center',
+  },
+  
+  // Activity Section
+  activitySection: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  activityCard: {
+    backgroundColor: 'white',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
     flexDirection: 'row',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.04,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
   },
-  reportIcon: {
+  activityIconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: Colors.primary.blue + '20',
+    borderRadius: 10,
+    backgroundColor: '#f0f7ff',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
   },
-  reportContent: {
+  activityContent: {
     flex: 1,
   },
-  reportHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  reportNumber: {
+  activityTitle: {
     fontSize: 14,
     fontWeight: '600',
-    color: Colors.primary.blue,
+    color: '#1a1a1a',
     marginBottom: 4,
   },
-  reportDate: {
+  activitySubtitle: {
+    fontSize: 12,
+    color: '#666',
+  },
+  activityStatusBadge: {
+    backgroundColor: '#e8f5e9',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  activityStatusText: {
     fontSize: 11,
-    color: Colors.neutral.gray,
-    fontWeight: '500',
-    fontStyle: 'italic',
-    marginTop: 4,
-  },
-  reportClient: {
-    fontSize: 15,
+    color: '#4caf50',
     fontWeight: '600',
-    color: Colors.neutral.darkGray,
-    marginBottom: 2,
-  },
-  reportLocation: {
-    fontSize: 13,
-    color: Colors.neutral.gray,
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   
   // Empty State
   emptyState: {
-    backgroundColor: Colors.neutral.white,
+    backgroundColor: 'white',
     borderRadius: 16,
     padding: 40,
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
+    shadowOpacity: 0.04,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 1,
   },
-  emptyIcon: {
+  emptyIconContainer: {
     marginBottom: 16,
   },
   emptyTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: Colors.neutral.darkGray,
+    fontWeight: '700',
+    color: '#1a1a1a',
     marginBottom: 8,
+    textAlign: 'center',
   },
   emptySubtitle: {
     fontSize: 14,
-    color: Colors.neutral.gray,
+    color: '#666',
     textAlign: 'center',
-    marginBottom: 20,
+    marginBottom: 24,
     lineHeight: 20,
   },
-  emptyAction: {
-    backgroundColor: Colors.primary.green,
+  emptyButton: {
+    backgroundColor: '#0066CC',
     paddingHorizontal: 24,
     paddingVertical: 12,
     borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  emptyActionText: {
-    color: Colors.neutral.white,
+  emptyButtonText: {
+    color: 'white',
     fontSize: 14,
     fontWeight: '600',
   },

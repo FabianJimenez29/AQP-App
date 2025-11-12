@@ -9,12 +9,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   Image,
+  ScrollView,
+  Animated,
 } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
 import ApiService from '../services/api';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -24,6 +27,9 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('checking');
   const [serverIP, setServerIP] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
+  const [passwordFocused, setPasswordFocused] = useState(false);
   const dispatch = useDispatch();
   const navigation = useNavigation<NavigationProp>();
 
@@ -138,97 +144,151 @@ export default function LoginScreen() {
       style={styles.container} 
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
-      <View style={styles.logoContainer}>
-        <Text style={styles.logoText}>AQUAPOOL</Text>
-        <Text style={styles.subtitle}>Sistema de Reportes</Text>
-      </View>
-
-      {/* Indicador de conexión */}
-      <View style={styles.connectionContainer}>
-        <View style={[styles.connectionIndicator, 
-          connectionStatus === 'connected' ? styles.connected : 
-          connectionStatus === 'checking' ? styles.checking : styles.disconnected
-        ]}>
-          <Text style={styles.connectionText}>
-            {connectionStatus === 'connected' && '🟢 Conectado'}
-            {connectionStatus === 'checking' && '🟡 Verificando...'}
-            {connectionStatus === 'disconnected' && '🔴 Sin conexión'}
-          </Text>
-          {connectionStatus === 'connected' && (
-            <Text style={styles.serverIPText}>Servidor: {serverIP}</Text>
-          )}
-          {connectionStatus === 'disconnected' && (
-            <TouchableOpacity style={styles.reconnectButton} onPress={checkServerConnection}>
-              <Text style={styles.reconnectButtonText}>Reconectar</Text>
-            </TouchableOpacity>
-          )}
+      <ScrollView 
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* Header con gradiente visual */}
+        <View style={styles.header}>
+          <View style={styles.logoBackgroundContainer}>
+            <Image 
+              source={require('../assets/images/AQPLogoBlack.png')} 
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            
+            {/* Indicador de conexión integrado */}
+            <View style={styles.connectionBadge}>
+              <Ionicons 
+                name={connectionStatus === 'connected' ? 'checkmark-circle' : connectionStatus === 'checking' ? 'time-outline' : 'alert-circle'} 
+                size={16} 
+                color={
+                  connectionStatus === 'connected' ? '#4caf50' : 
+                  connectionStatus === 'checking' ? '#ff9800' : '#f44336'
+                }
+              />
+              <Text style={[styles.connectionBadgeText, {
+                color: connectionStatus === 'connected' ? '#4caf50' : 
+                       connectionStatus === 'checking' ? '#ff9800' : '#f44336'
+              }]}>
+                {connectionStatus === 'connected' ? 'Conectado' : 
+                 connectionStatus === 'checking' ? 'Verificando...' : 'Sin conexión'}
+              </Text>
+            </View>
+          </View>
+          
+          <Text style={styles.welcomeText}>Bienvenido</Text>
+          <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
         </View>
-      </View>
 
-      <View style={styles.formContainer}>
-        <View style={styles.demoCredentials}>
-          <Text style={styles.demoTitle}>🧪 Credenciales de Prueba</Text>
-          <Text style={styles.demoText}>
-            <Text style={styles.demoBold}>Técnico:</Text> demo@aquapool.com / demo123
-          </Text>
-          <Text style={styles.demoText}>
-            <Text style={styles.demoBold}>Admin:</Text> admin@aquapool.com / admin123
-          </Text>
-        </View>
+        {/* Formulario con diseño moderno */}
+        <View style={styles.formContainer}>
+          {/* Campo de Email */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputIconContainer}>
+              <MaterialIcons name="email" size={20} color={emailFocused ? '#0066CC' : '#999'} />
+            </View>
+            <TextInput
+              style={[styles.input, emailFocused && styles.inputFocused]}
+              placeholder="Correo electrónico"
+              value={email}
+              onChangeText={setEmail}
+              onFocus={() => setEmailFocused(true)}
+              onBlur={() => setEmailFocused(false)}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              placeholderTextColor="#999"
+            />
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Email"
-          value={email}
-          onChangeText={setEmail}
-          keyboardType="email-address"
-          autoCapitalize="none"
-          placeholderTextColor="#666"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Contraseña"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          placeholderTextColor="#666"
-        />
-
-        <TouchableOpacity
-          style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
-          onPress={handleLogin}
-          disabled={isLoading}
-        >
-          <Text style={styles.loginButtonText}>
-            {isLoading ? 'Ingresando...' : 'Iniciar Sesión'}
-          </Text>
-        </TouchableOpacity>
-
-        <View style={styles.quickLoginContainer}>
-          <Text style={styles.quickLoginTitle}>Acceso Rápido:</Text>
-          <View style={styles.quickLoginButtons}>
+          {/* Campo de Password */}
+          <View style={styles.inputContainer}>
+            <View style={styles.inputIconContainer}>
+              <MaterialIcons name="lock" size={20} color={passwordFocused ? '#0066CC' : '#999'} />
+            </View>
+            <TextInput
+              style={[styles.input, passwordFocused && styles.inputFocused]}
+              placeholder="Contraseña"
+              value={password}
+              onChangeText={setPassword}
+              onFocus={() => setPasswordFocused(true)}
+              onBlur={() => setPasswordFocused(false)}
+              secureTextEntry={!showPassword}
+              placeholderTextColor="#999"
+            />
             <TouchableOpacity 
-              style={styles.quickLoginButton}
-              onPress={() => {
-                setEmail('tech@aquapool.com');
-                setPassword('tech123');
-              }}
+              style={styles.eyeIcon}
+              onPress={() => setShowPassword(!showPassword)}
             >
-              <Text style={styles.quickLoginButtonText}>Técnico Demo</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.quickLoginButton, styles.adminButton]}
-              onPress={() => {
-                setEmail('admin@aquapool.com');
-                setPassword('admin123');
-              }}
-            >
-              <Text style={styles.quickLoginButtonText}>Admin Demo</Text>
+              <Ionicons 
+                name={showPassword ? 'eye-off' : 'eye'} 
+                size={20} 
+                color="#999" 
+              />
             </TouchableOpacity>
           </View>
+
+          {/* Botón de Login con gradiente simulado */}
+          <TouchableOpacity
+            style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
+            onPress={handleLogin}
+            disabled={isLoading}
+            activeOpacity={0.8}
+          >
+            {isLoading ? (
+              <View style={styles.loadingContainer}>
+                <Ionicons name="reload" size={20} color="white" />
+                <Text style={styles.loginButtonText}>Ingresando...</Text>
+              </View>
+            ) : (
+              <View style={styles.buttonContent}>
+                <Text style={styles.loginButtonText}>Iniciar Sesión</Text>
+                <Ionicons name="arrow-forward" size={20} color="white" />
+              </View>
+            )}
+          </TouchableOpacity>
+
+          {/* Acceso Rápido con diseño mejorado */}
+          <View style={styles.quickLoginContainer}>
+            <View style={styles.dividerContainer}>
+              <View style={styles.divider} />
+              <Text style={styles.quickLoginTitle}>Acceso Rápido</Text>
+              <View style={styles.divider} />
+            </View>
+            
+            <View style={styles.quickLoginButtons}>
+              <TouchableOpacity 
+                style={styles.quickLoginButton}
+                onPress={() => {
+                  setEmail('tech@aquapool.com');
+                  setPassword('tech123');
+                }}
+              >
+                <Ionicons name="person" size={18} color="#0066CC" style={styles.quickLoginIcon} />
+                <Text style={styles.quickLoginButtonText}>Técnico</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.quickLoginButton, styles.adminButton]}
+                onPress={() => {
+                  setEmail('admin@aquapool.com');
+                  setPassword('admin123');
+                }}
+              >
+                <Ionicons name="shield-checkmark" size={18} color="#FF6B00" style={styles.quickLoginIcon} />
+                <Text style={[styles.quickLoginButtonText, styles.adminButtonText]}>Admin</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      </View>
+        
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>AQUAPOOL © 2024</Text>
+          <Text style={styles.footerSubtext}>Sistema de Gestión de Mantenimiento</Text>
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
@@ -236,19 +296,53 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#f8f9fa',
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
-    paddingHorizontal: 30,
+    paddingVertical: 20,
   },
-  logoContainer: {
+  header: {
     alignItems: 'center',
-    marginBottom: 50,
+    marginBottom: 30,
+    paddingHorizontal: 20,
   },
-  logoText: {
+  logoBackgroundContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  logoImage: {
+    width: 300,
+    height: 180,
+  },
+  connectionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'white',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: 1,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  connectionBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginLeft: 6,
+  },
+  welcomeText: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: '#2196F3',
-    marginBottom: 10,
+    color: '#1a1a1a',
+    marginBottom: 5,
   },
   subtitle: {
     fontSize: 16,
@@ -257,141 +351,142 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     backgroundColor: 'white',
-    padding: 30,
-    borderRadius: 10,
+    marginHorizontal: 20,
+    padding: 25,
+    borderRadius: 20,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
-      height: 2,
+      height: 4,
     },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
     elevation: 5,
   },
-  demoCredentials: {
-    backgroundColor: '#e3f2fd',
-    padding: 15,
-    borderRadius: 8,
-    marginBottom: 20,
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  demoTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#1976d2',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  demoText: {
-    fontSize: 12,
-    color: '#1976d2',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  demoBold: {
-    fontWeight: 'bold',
+  inputIconContainer: {
+    paddingLeft: 15,
+    paddingRight: 10,
   },
   input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 15,
-    marginBottom: 15,
+    flex: 1,
+    paddingVertical: 15,
+    paddingRight: 15,
     fontSize: 16,
-    backgroundColor: '#f9f9f9',
+    color: '#1a1a1a',
+  },
+  inputFocused: {
+    borderColor: '#0066CC',
+  },
+  eyeIcon: {
+    paddingHorizontal: 15,
   },
   loginButton: {
-    backgroundColor: '#2196F3',
-    borderRadius: 8,
-    padding: 15,
+    backgroundColor: '#0066CC',
+    borderRadius: 12,
+    padding: 16,
     alignItems: 'center',
     marginTop: 10,
+    shadowColor: '#0066CC',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   loginButtonDisabled: {
     backgroundColor: '#ccc',
+    shadowOpacity: 0,
   },
   loginButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: 'bold',
   },
+  loadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  buttonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
   quickLoginContainer: {
-    marginTop: 20,
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
+    marginTop: 25,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#e0e0e0',
   },
   quickLoginTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 10,
+    color: '#999',
+    paddingHorizontal: 10,
   },
   quickLoginButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    gap: 12,
   },
   quickLoginButton: {
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 15,
     flex: 1,
-    marginHorizontal: 5,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EBF5FF',
+    paddingVertical: 12,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#0066CC',
   },
   adminButton: {
-    backgroundColor: '#fff3e0',
+    backgroundColor: '#FFF4E6',
+    borderColor: '#FF6B00',
+  },
+  quickLoginIcon: {
+    marginRight: 6,
   },
   quickLoginButtonText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#666',
+    color: '#0066CC',
   },
-  // Estilos para el indicador de conexión
-  connectionContainer: {
-    marginBottom: 20,
-    paddingHorizontal: 20,
+  adminButtonText: {
+    color: '#FF6B00',
   },
-  connectionIndicator: {
-    backgroundColor: '#f5f5f5',
-    padding: 12,
-    borderRadius: 8,
+  footer: {
     alignItems: 'center',
-    borderWidth: 2,
+    marginTop: 30,
+    paddingBottom: 20,
   },
-  connected: {
-    backgroundColor: '#e8f5e8',
-    borderColor: '#4caf50',
-  },
-  checking: {
-    backgroundColor: '#fff8e1',
-    borderColor: '#ff9800',
-  },
-  disconnected: {
-    backgroundColor: '#ffebee',
-    borderColor: '#f44336',
-  },
-  connectionText: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  serverIPText: {
+  footerText: {
     fontSize: 12,
-    color: '#666',
-    marginBottom: 8,
+    color: '#999',
+    fontWeight: '600',
   },
-  reconnectButton: {
-    backgroundColor: '#2196F3',
-    paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 15,
+  footerSubtext: {
+    fontSize: 11,
+    color: '#bbb',
     marginTop: 4,
-  },
-  reconnectButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
   },
 });

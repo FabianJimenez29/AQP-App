@@ -56,7 +56,7 @@ const CartScreen: React.FC = () => {
   const handleRemoveItem = (itemId: string, productName: string) => {
     Alert.alert(
       'Eliminar producto',
-      `¿Estás seguro de que quieres eliminar "${productName}" del carrito?`,
+      `¿Estás seguro de que quieres eliminar "${productName}" de la orden?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Eliminar', style: 'destructive', onPress: () => dispatch(removeFromCart(itemId)) }
@@ -134,97 +134,108 @@ const CartScreen: React.FC = () => {
           <Text style={styles.headerTitle}>Carrito de Compras</Text>
         </View>
 
-        <View style={styles.emptyContainer}>
-          <Ionicons name="cart-outline" size={80} color={Colors.neutral.gray} />
-          <Text style={styles.emptyTitle}>Tu carrito está vacío</Text>
-          <Text style={styles.emptySubtitle}>
-            Agrega productos desde la pantalla de productos
-          </Text>
-          <TouchableOpacity 
-            style={styles.shopButton}
-            onPress={() => navigation.navigate('Products')}
-          >
-            <Ionicons name="storefront-outline" size={20} color="white" />
-            <Text style={styles.shopButtonText}>Ir a Productos</Text>
-          </TouchableOpacity>
-        </View>
+                  <View style={styles.emptyContainer}>
+            <Ionicons name="document-text-outline" size={80} color={Colors.neutral.gray} />
+            <Text style={styles.emptyTitle}>Sin productos en la orden</Text>
+            <Text style={styles.emptySubtitle}>
+              Agrega productos desde la pantalla de productos para crear una orden de compra
+            </Text>
+            <TouchableOpacity 
+              style={styles.shopButton}
+              onPress={() => navigation.navigate('Products')}
+            >
+              <Ionicons name="storefront-outline" size={20} color="white" />
+              <Text style={styles.shopButtonText}>Ir a Productos</Text>
+            </TouchableOpacity>
+          </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()} 
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={Colors.primary.blue} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Carrito de Compras</Text>
-          <TouchableOpacity onPress={handleClearCart} style={styles.clearButton}>
-            <Ionicons name="trash-outline" size={20} color={Colors.danger.red} />
-          </TouchableOpacity>
+      {/* Modern Header */}
+      <View style={styles.header}>
+        <TouchableOpacity 
+          onPress={() => navigation.goBack()} 
+          style={styles.backButton}
+        >
+          <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Orden de Compra</Text>
+          <Text style={styles.headerSubtitle}>{`${totalItems} ${totalItems === 1 ? 'producto' : 'productos'}`}</Text>
         </View>
+        <TouchableOpacity onPress={handleClearCart} style={styles.clearButton}>
+          <Ionicons name="trash-outline" size={22} color="#f44336" />
+        </TouchableOpacity>
+      </View>
 
-        {/* Summary */}
-        <View style={styles.summaryContainer}>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Productos:</Text>
-            <Text style={styles.summaryValue}>{totalItems} items</Text>
+      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+        {/* Summary Card */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryIconContainer}>
+            <Ionicons name="document-text" size={32} color="white" />
           </View>
-          <View style={styles.summaryRow}>
-            <Text style={styles.summaryLabel}>Total:</Text>
-            <Text style={styles.summaryValue}>${totalAmount.toFixed(2)}</Text>
+          <View style={styles.summaryContent}>
+            <Text style={styles.summaryTitle}>Orden de Compra</Text>
+            <Text style={styles.summaryLabelSmall}>{`${totalItems} ${totalItems === 1 ? 'producto' : 'productos'} en tu pedido`}</Text>
           </View>
         </View>
 
         {/* Cart Items */}
         <View style={styles.itemsContainer}>
-          <Text style={styles.sectionTitle}>Productos en tu carrito</Text>
-          {items.map((item) => (
+          <View style={styles.sectionTitleContainer}>
+            <Ionicons name="cube-outline" size={20} color="#1a1a1a" />
+            <Text style={styles.sectionTitle}>Productos</Text>
+          </View>
+          {items.map((item, index) => (
             <View key={item.id} style={styles.cartItem}>
-              <View style={styles.itemInfo}>
-                <Text style={styles.itemName}>{item.productName}</Text>
-                {item.variantName && (
-                  <Text style={styles.itemVariant}>Variante: {item.variantName}</Text>
-                )}
-                <Text style={styles.itemPrice}>
-                  ${item.unitPrice.toFixed(2)} c/u
-                </Text>
+              {/* Product Info */}
+              <View style={styles.itemHeader}>
+                <View style={styles.itemNumberBadge}>
+                  <Text style={styles.itemNumberText}>{index + 1}</Text>
+                </View>
+                <View style={styles.itemInfo}>
+                  <Text style={styles.itemName}>{item.productName}</Text>
+                  {item.variantName && (
+                    <View style={styles.variantBadge}>
+                      <Ionicons name="pricetag" size={12} color="#666" />
+                      <Text style={styles.itemVariant}>{item.variantName}</Text>
+                    </View>
+                  )}
+                </View>
+                <TouchableOpacity
+                  onPress={() => handleRemoveItem(item.id, item.productName)}
+                  style={styles.removeButton}
+                >
+                  <Ionicons name="close-circle" size={24} color="#f44336" />
+                </TouchableOpacity>
               </View>
-              
-              <View style={styles.itemActions}>
+
+              {/* Quantity Controls */}
+              <View style={styles.itemFooter}>
                 <View style={styles.quantityContainer}>
                   <TouchableOpacity
                     onPress={() => handleQuantityChange(item.id, item.quantity - 1)}
                     style={styles.quantityButton}
                   >
-                    <Ionicons name="remove" size={16} color={Colors.primary.blue} />
+                    <Ionicons name="remove" size={18} color="#0066CC" />
                   </TouchableOpacity>
-                  <Text style={styles.quantity}>{item.quantity}</Text>
+                  <View style={styles.quantityDisplay}>
+                    <Text style={styles.quantity}>{item.quantity}</Text>
+                  </View>
                   <TouchableOpacity
                     onPress={() => handleQuantityChange(item.id, item.quantity + 1)}
                     style={styles.quantityButton}
                   >
-                    <Ionicons name="add" size={16} color={Colors.primary.blue} />
+                    <Ionicons name="add" size={18} color="#0066CC" />
                   </TouchableOpacity>
                 </View>
-                
-                <TouchableOpacity
-                  onPress={() => handleRemoveItem(item.id, item.productName)}
-                  style={styles.removeButton}
-                >
-                  <Ionicons name="trash-outline" size={18} color={Colors.danger.red} />
-                </TouchableOpacity>
-              </View>
-              
-              <View style={styles.itemTotalContainer}>
-                <Text style={styles.itemTotal}>
-                  ${item.totalPrice.toFixed(2)}
-                </Text>
+
+                <View style={styles.quantityLabel}>
+                  <Text style={styles.quantityLabelText}>Cantidad solicitada</Text>
+                </View>
               </View>
             </View>
           ))}
@@ -232,34 +243,54 @@ const CartScreen: React.FC = () => {
 
         {/* Order Form */}
         <View style={styles.formContainer}>
-          <Text style={styles.sectionTitle}>Información del pedido</Text>
+          <View style={styles.sectionTitleContainer}>
+            <Ionicons name="document-text-outline" size={20} color="#1a1a1a" />
+            <Text style={styles.sectionTitle}>Detalles del Pedido</Text>
+          </View>
           
-          <View style={styles.infoGroup}>
-            <Text style={styles.infoLabel}>Técnico:</Text>
-            <Text style={styles.infoValue}>{user?.name || 'Usuario'}</Text>
+          {/* Technician Info */}
+          <View style={styles.technicianCard}>
+            <View style={styles.technicianIcon}>
+              <Ionicons name="person" size={20} color="#0066CC" />
+            </View>
+            <View style={styles.technicianInfo}>
+              <Text style={styles.technicianLabel}>Solicitado por</Text>
+              <Text style={styles.technicianName}>{user?.name || 'Usuario'}</Text>
+            </View>
+            <View style={styles.technicianBadge}>
+              <Ionicons name="checkmark-circle" size={20} color="#4caf50" />
+            </View>
           </View>
 
+          {/* Delivery Address */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Dirección de entrega</Text>
+            <View style={styles.inputLabelContainer}>
+              <Ionicons name="location" size={16} color="#666" />
+              <Text style={styles.inputLabel}>Dirección de Entrega</Text>
+            </View>
             <TextInput
               style={styles.input}
               value={deliveryAddress}
               onChangeText={setDeliveryAddress}
-              placeholder="Dirección o ubicación de entrega"
-              placeholderTextColor={Colors.neutral.gray}
+              placeholder="Ingresa la dirección de entrega..."
+              placeholderTextColor="#999"
             />
           </View>
 
+          {/* Notes */}
           <View style={styles.inputGroup}>
-            <Text style={styles.inputLabel}>Notas adicionales</Text>
+            <View style={styles.inputLabelContainer}>
+              <Ionicons name="chatbox-ellipses-outline" size={16} color="#666" />
+              <Text style={styles.inputLabel}>Notas Adicionales</Text>
+            </View>
             <TextInput
               style={[styles.input, styles.notesInput]}
               value={notes}
               onChangeText={setNotes}
               placeholder="Comentarios o instrucciones especiales..."
-              placeholderTextColor={Colors.neutral.gray}
+              placeholderTextColor="#999"
               multiline
-              numberOfLines={3}
+              numberOfLines={4}
               textAlignVertical="top"
             />
           </View>
@@ -268,12 +299,15 @@ const CartScreen: React.FC = () => {
         {/* Error Message */}
         {error && (
           <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>❌ {error}</Text>
-            <TouchableOpacity onPress={() => dispatch(clearError())}>
-              <Text style={styles.dismissError}>Descartar</Text>
+            <Ionicons name="alert-circle" size={20} color="#f44336" />
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity onPress={() => dispatch(clearError())} style={styles.dismissButton}>
+              <Ionicons name="close" size={20} color="#f44336" />
             </TouchableOpacity>
           </View>
         )}
+
+        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* Submit Button */}
@@ -284,15 +318,15 @@ const CartScreen: React.FC = () => {
           disabled={isSubmitting || items.length === 0}
         >
           {isSubmitting ? (
-            <View style={styles.loadingContainer}>
+            <View style={styles.submitContent}>
               <ActivityIndicator size="small" color="white" />
-              <Text style={styles.submitButtonText}>Enviando pedido...</Text>
+              <Text style={styles.submitButtonText}>Procesando...</Text>
             </View>
           ) : (
             <View style={styles.submitContent}>
-              <Ionicons name="send" size={20} color="white" />
+              <Ionicons name="checkmark-circle" size={24} color="white" />
               <Text style={styles.submitButtonText}>
-                Finalizar Pedido ({totalItems} items)
+                Enviar Orden de Compra
               </Text>
             </View>
           )}
@@ -305,38 +339,91 @@ const CartScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.neutral.white,
+    backgroundColor: '#f5f7fa',
   },
   scrollView: {
     flex: 1,
   },
+  
+  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: 'white',
     borderBottomWidth: 1,
-    borderBottomColor: Colors.neutral.lightGray,
+    borderBottomColor: '#f0f0f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   backButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f5f7fa',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
-    color: Colors.neutral.darkGray,
-    flex: 1,
-    textAlign: 'center',
-    marginHorizontal: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  headerSubtitle: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 2,
   },
   clearButton: {
-    padding: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ffebee',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  summaryContainer: {
-    backgroundColor: Colors.primary.lightBlue,
-    padding: 16,
-    margin: 16,
-    borderRadius: 12,
+  
+  // Summary Card
+  summaryCard: {
+    backgroundColor: '#0066CC',
+    marginHorizontal: 16,
+    marginTop: 16,
+    borderRadius: 16,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: '#0066CC',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  summaryIconContainer: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  summaryContent: {
+    flex: 1,
+  },
+  summaryTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'white',
+    marginBottom: 4,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -345,14 +432,217 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   summaryLabel: {
-    fontSize: 16,
-    color: Colors.neutral.darkGray,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontWeight: '500',
   },
   summaryValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: 'white',
+  },
+  summaryLabelSmall: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+  
+  // Items Container
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  itemsContainer: {
+    padding: 16,
+  },
+  cartItem: {
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  itemNumberBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#f0f7ff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  itemNumberText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0066CC',
+  },
+  itemInfo: {
+    flex: 1,
+  },
+  itemName: {
     fontSize: 16,
     fontWeight: '600',
-    color: Colors.primary.blue,
+    color: '#1a1a1a',
+    marginBottom: 6,
   },
+  variantBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f7fa',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+    gap: 4,
+  },
+  itemVariant: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  removeButton: {
+    padding: 4,
+  },
+  itemFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+  },
+  quantityContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f5f7fa',
+    borderRadius: 12,
+    padding: 4,
+  },
+  quantityButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  quantityDisplay: {
+    minWidth: 40,
+    alignItems: 'center',
+  },
+  quantity: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  quantityLabel: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  quantityLabelText: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+  },
+  
+  // Form
+  formContainer: {
+    padding: 16,
+    backgroundColor: 'white',
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  technicianCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f7ff',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#d6e9ff',
+  },
+  technicianIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#0066CC',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  technicianInfo: {
+    flex: 1,
+  },
+  technicianLabel: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 2,
+  },
+  technicianName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  technicianBadge: {
+    marginLeft: 8,
+  },
+  inputGroup: {
+    marginBottom: 16,
+  },
+  inputLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  input: {
+    backgroundColor: '#fafafa',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#1a1a1a',
+  },
+  notesInput: {
+    minHeight: 100,
+    textAlignVertical: 'top',
+  },
+  
+  // Empty State
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -361,204 +651,98 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 24,
-    fontWeight: '600',
-    color: Colors.neutral.darkGray,
+    fontWeight: '700',
+    color: '#1a1a1a',
     marginTop: 16,
     marginBottom: 8,
   },
   emptySubtitle: {
-    fontSize: 16,
-    color: Colors.neutral.gray,
+    fontSize: 15,
+    color: '#666',
     textAlign: 'center',
     marginBottom: 32,
+    lineHeight: 22,
   },
   shopButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.primary.blue,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: '#0066CC',
+    paddingHorizontal: 28,
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    shadowColor: '#0066CC',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
   },
   shopButtonText: {
     color: 'white',
     fontSize: 16,
     fontWeight: '600',
-    marginLeft: 8,
   },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.neutral.darkGray,
-    marginBottom: 16,
-  },
-  itemsContainer: {
-    padding: 16,
-  },
-  cartItem: {
-    backgroundColor: 'white',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  itemInfo: {
-    marginBottom: 12,
-  },
-  itemName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.neutral.darkGray,
-    marginBottom: 4,
-  },
-  itemVariant: {
-    fontSize: 14,
-    color: Colors.neutral.gray,
-    marginBottom: 4,
-  },
-  itemPrice: {
-    fontSize: 14,
-    color: Colors.primary.blue,
-    fontWeight: '500',
-  },
-  itemActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  quantityContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.neutral.lightGray,
-    borderRadius: 8,
-    padding: 4,
-  },
-  quantityButton: {
-    padding: 8,
-    backgroundColor: Colors.neutral.white,
-    borderRadius: 6,
-  },
-  quantity: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: Colors.neutral.darkGray,
-    marginHorizontal: 16,
-    minWidth: 30,
-    textAlign: 'center',
-  },
-  removeButton: {
-    padding: 8,
-  },
-  itemTotalContainer: {
-    alignItems: 'flex-end',
-  },
-  itemTotal: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: Colors.primary.blue,
-  },
-  formContainer: {
-    padding: 16,
-    backgroundColor: Colors.neutral.lightGray,
-  },
-  infoGroup: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: 'white',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 16,
-  },
-  infoLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.neutral.gray,
-  },
-  infoValue: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: Colors.neutral.darkGray,
-  },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: Colors.neutral.darkGray,
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: 'white',
-    borderWidth: 1,
-    borderColor: Colors.neutral.gray + '40',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 16,
-    color: Colors.neutral.darkGray,
-  },
-  notesInput: {
-    minHeight: 80,
-  },
+  
+  // Error
   errorContainer: {
-    backgroundColor: Colors.danger.lightRed,
-    padding: 12,
-    margin: 16,
-    borderRadius: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    backgroundColor: '#ffebee',
+    padding: 16,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#ffcdd2',
+    gap: 12,
   },
   errorText: {
-    color: Colors.danger.red,
+    color: '#c62828',
     fontSize: 14,
     flex: 1,
+    fontWeight: '500',
   },
-  dismissError: {
-    color: Colors.danger.red,
-    fontSize: 14,
-    fontWeight: '600',
+  dismissButton: {
+    padding: 4,
   },
+  
+  // Submit Container
   submitContainer: {
-    padding: 16,
     backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderTopWidth: 1,
-    borderTopColor: Colors.neutral.lightGray,
+    borderTopColor: '#f0f0f0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
   },
   submitButton: {
-    backgroundColor: Colors.primary.blue,
+    backgroundColor: '#4caf50',
     borderRadius: 12,
     paddingVertical: 16,
     alignItems: 'center',
-    shadowColor: Colors.primary.blue,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#4caf50',
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
-    shadowRadius: 4,
+    shadowRadius: 8,
     elevation: 4,
   },
   submitButtonDisabled: {
-    backgroundColor: Colors.neutral.gray,
+    backgroundColor: '#ccc',
+    opacity: 0.5,
   },
   submitContent: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 10,
   },
   submitButtonText: {
     color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    fontSize: 17,
+    fontWeight: '700',
   },
 });
 

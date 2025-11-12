@@ -30,17 +30,17 @@ export default function PoolHeader({
   
   return (
     <>
-      <StatusBar barStyle="light-content" backgroundColor={Colors.primary.blue} />
-      <View style={[styles.header, { paddingTop: Math.max(insets.top + 5, 50) }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={Colors.neutral.white} />
+      <View style={[styles.header, { paddingTop: Math.max(insets.top + 10, 50) }]}>
         <View style={styles.headerContent}>
           {showBack ? (
             <TouchableOpacity style={styles.backButton} onPress={onBack}>
-              <Ionicons name="arrow-back" size={24} color={Colors.neutral.white} />
+              <Ionicons name="arrow-back" size={24} color={Colors.neutral.darkGray} />
             </TouchableOpacity>
           ) : (
             <View style={styles.logoContainer}>
               <Image 
-                source={require('../../assets/images/AQPL.png')} 
+                source={require('../../assets/images/AQPLogoBlack.png')} 
                 style={styles.logo}
                 resizeMode="contain"
               />
@@ -54,20 +54,15 @@ export default function PoolHeader({
 
           {showLogout ? (
             <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
-              <Ionicons name="log-out-outline" size={22} color={Colors.neutral.white} />
+              <Ionicons name="log-out-outline" size={22} color={Colors.primary.blue} />
             </TouchableOpacity>
           ) : rightButton ? (
             <TouchableOpacity style={styles.logoutButton} onPress={rightButton.onPress}>
-              <Ionicons name={rightButton.icon} size={22} color={Colors.neutral.white} />
+              <Ionicons name={rightButton.icon} size={22} color={Colors.primary.blue} />
             </TouchableOpacity>
           ) : (
             <View style={styles.spacer} />
           )}
-        </View>
-
-        {/* Onda decorativa más sutil */}
-        <View style={styles.waveContainer}>
-          <View style={styles.wave} />
         </View>
       </View>
     </>
@@ -77,9 +72,10 @@ export default function PoolHeader({
 const styles = StyleSheet.create({
   header: {
     position: 'relative',
-    paddingBottom: 15,
-    backgroundColor: Colors.primary.blue,
-    overflow: 'hidden',
+    paddingBottom: 20,
+    backgroundColor: Colors.neutral.white,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   headerContent: {
     flexDirection: 'row',
@@ -92,8 +88,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logo: {
-    height: 60,
-    width: 180,
+    height: 50,
+    width: 140,
   },
   titleContainer: {
     flex: 1,
@@ -101,51 +97,33 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 18,
-    fontWeight: '600',
-    color: Colors.neutral.white,
+    fontWeight: '700',
+    color: Colors.neutral.darkGray,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: '#666',
     textAlign: 'center',
     marginTop: 2,
   },
   backButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logoutButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EBF5FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
   spacer: {
-    width: 36,
-  },
-  waveContainer: {
-    position: 'absolute',
-    bottom: -5,
-    left: 0,
-    right: 0,
-    height: 15,
-    zIndex: 1,
-  },
-  wave: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopLeftRadius: 50,
-    borderTopRightRadius: 50,
+    width: 40,
   },
 });

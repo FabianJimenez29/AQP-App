@@ -105,7 +105,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           <View style={styles.stockRow}>
             <Ionicons name="cube-outline" size={14} color={Colors.primary.blue} />
             <Text style={styles.stockText}>
-              Stock: {selectedVariant ? selectedVariant.stock : product.stock} {selectedVariant?.unit || 'unidades'}
+              {`Stock: ${selectedVariant ? selectedVariant.stock : product.stock} ${selectedVariant?.unit || 'unidades'}`}
             </Text>
           </View>
         </View>
@@ -149,7 +149,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           disabled={!selectedVariant && product.has_variants}
         >
           <Ionicons name="cart" size={16} color="white" />
-          <Text style={[styles.cartButtonText, { marginLeft: 6 }]}>Agregar</Text>
+          <Text style={styles.cartButtonText}>Agregar</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -282,6 +282,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 6,
     paddingVertical: 10,
     paddingHorizontal: 12,
     backgroundColor: Colors.primary.blue,
