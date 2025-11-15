@@ -25,15 +25,22 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const dispatch = useDispatch<AppDispatch>();
   
-  // Filtrar variantes sin stock
-  const availableVariants = product.variants?.filter(v => v.stock > 0) || [];
+  // Obtener todas las variantes (con y sin stock)
+  const allVariants = product.variants || [];
   
+  // Filtrar solo las que tienen stock
+  const variantsWithStock = allVariants.filter(v => v.stock > 0);
+  
+  // Seleccionar la primera variante con stock, o null si no hay ninguna
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    availableVariants.length > 0 ? availableVariants[0] : null
+    variantsWithStock.length > 0 ? variantsWithStock[0] : null
   );
 
   const handleVariantSelect = (variant: ProductVariant) => {
-    setSelectedVariant(variant);
+    // Solo permitir seleccionar variantes con stock
+    if (variant.stock > 0) {
+      setSelectedVariant(variant);
+    }
   };
 
   // Determinar si el producto/variante tiene stock
@@ -143,29 +150,40 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
         {/* 5. Variantes (espacio reservado siempre) */}
         <View style={styles.variantsContainer}>
-          {product.has_variants && availableVariants.length > 0 ? (
+          {product.has_variants && allVariants.length > 0 ? (
             <>
               <Text style={styles.variantsLabel}>Presentación</Text>
               <View style={styles.variantsList}>
-                {availableVariants.map((variant) => (
-                  <TouchableOpacity
-                    key={variant.id}
-                    style={[
-                      styles.variantButton,
-                      selectedVariant?.id === variant.id && styles.variantButtonSelected,
-                    ]}
-                    onPress={() => handleVariantSelect(variant)}
-                  >
-                    <Text
+                {allVariants.map((variant) => {
+                  const hasVariantStock = variant.stock > 0;
+                  const isSelected = selectedVariant?.id === variant.id;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={variant.id}
                       style={[
-                        styles.variantButtonText,
-                        selectedVariant?.id === variant.id && styles.variantButtonTextSelected,
+                        styles.variantButton,
+                        isSelected && styles.variantButtonSelected,
+                        !hasVariantStock && styles.variantButtonDisabled,
                       ]}
+                      onPress={() => handleVariantSelect(variant)}
+                      disabled={!hasVariantStock}
                     >
-                      {variant.variant_name}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                      <Text
+                        style={[
+                          styles.variantButtonText,
+                          isSelected && styles.variantButtonTextSelected,
+                          !hasVariantStock && styles.variantButtonTextDisabled,
+                        ]}
+                      >
+                        {variant.variant_name}
+                      </Text>
+                      {!hasVariantStock && (
+                        <Text style={styles.variantStockBadge}>Sin stock</Text>
+                      )}
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </>
           ) : product.has_variants ? (
@@ -298,6 +316,21 @@ const styles = StyleSheet.create({
   variantButtonTextSelected: {
     color: Colors.neutral.white,
     fontWeight: '600',
+  },
+  variantButtonDisabled: {
+    backgroundColor: '#f3f4f6',
+    borderColor: '#e5e7eb',
+    opacity: 0.6,
+  },
+  variantButtonTextDisabled: {
+    color: '#9ca3af',
+    textDecorationLine: 'line-through',
+  },
+  variantStockBadge: {
+    fontSize: 9,
+    color: '#ef4444',
+    marginTop: 2,
+    fontWeight: '500',
   },
   stockContainer: {
     marginBottom: 12,
