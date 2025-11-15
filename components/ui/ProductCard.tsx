@@ -24,17 +24,34 @@ interface ProductCardProps {
 
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const dispatch = useDispatch<AppDispatch>();
+  
+  // Filtrar variantes sin stock
+  const availableVariants = product.variants?.filter(v => v.stock > 0) || [];
+  
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
-    product.variants && product.variants.length > 0 ? product.variants[0] : null
+    availableVariants.length > 0 ? availableVariants[0] : null
   );
 
   const handleVariantSelect = (variant: ProductVariant) => {
     setSelectedVariant(variant);
   };
 
+  // Determinar si el producto/variante tiene stock
+  const hasStock = product.has_variants 
+    ? (selectedVariant && selectedVariant.stock > 0)
+    : (product.stock > 0);
+
+  const isDisabled = !hasStock || (!selectedVariant && product.has_variants);
+
   const handleAddToCart = () => {
     try {
+      // Verificar stock antes de agregar
       if (product.has_variants && selectedVariant) {
+        if (selectedVariant.stock <= 0) {
+          Alert.alert('Sin stock', `${product.name} (${selectedVariant.variant_name}) no tiene stock disponible`);
+          return;
+        }
+
         dispatch(addToCart({
           productId: product.id,
           productName: product.name,
@@ -49,6 +66,11 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           `${product.name} (${selectedVariant.variant_name}) agregado correctamente`
         );
       } else if (!product.has_variants) {
+        if (product.stock <= 0) {
+          Alert.alert('Sin stock', `${product.name} no tiene stock disponible`);
+          return;
+        }
+
         dispatch(addToCart({
           productId: product.id,
           productName: product.name,
@@ -103,20 +125,29 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         {/* 4. Stock */}
         <View style={styles.stockContainer}>
           <View style={styles.stockRow}>
-            <Ionicons name="cube-outline" size={14} color={Colors.primary.blue} />
-            <Text style={styles.stockText}>
-              {`Stock: ${selectedVariant ? selectedVariant.stock : product.stock} ${selectedVariant?.unit || 'unidades'}`}
+            <Ionicons 
+              name="cube-outline" 
+              size={14} 
+              color={hasStock ? Colors.primary.blue : '#ef4444'} 
+            />
+            <Text style={[
+              styles.stockText,
+              !hasStock && styles.stockTextEmpty
+            ]}>
+              {hasStock 
+                ? `Stock: ${selectedVariant ? selectedVariant.stock : product.stock} ${selectedVariant?.unit || 'unidades'}`
+                : 'Sin stock disponible'}
             </Text>
           </View>
         </View>
 
         {/* 5. Variantes (espacio reservado siempre) */}
         <View style={styles.variantsContainer}>
-          {product.has_variants && product.variants && product.variants.length > 0 ? (
+          {product.has_variants && availableVariants.length > 0 ? (
             <>
               <Text style={styles.variantsLabel}>Presentación</Text>
               <View style={styles.variantsList}>
-                {product.variants.map((variant) => (
+                {availableVariants.map((variant) => (
                   <TouchableOpacity
                     key={variant.id}
                     style={[
@@ -137,6 +168,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
                 ))}
               </View>
             </>
+          ) : product.has_variants ? (
+            <Text style={styles.noVariantsText}>Sin presentaciones disponibles</Text>
           ) : null}
         </View>
       </View>
@@ -144,12 +177,17 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
       {/* Action - Always at bottom */}
       <View style={styles.actionContainer}>
         <TouchableOpacity 
-          style={styles.cartButton}
+          style={[
+            styles.cartButton,
+            isDisabled && styles.cartButtonDisabled
+          ]}
           onPress={handleAddToCart}
-          disabled={!selectedVariant && product.has_variants}
+          disabled={isDisabled}
         >
           <Ionicons name="cart" size={16} color="white" />
-          <Text style={styles.cartButtonText}>Agregar</Text>
+          <Text style={styles.cartButtonText}>
+            {hasStock ? 'Agregar' : 'Sin stock'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -274,6 +312,15 @@ const styles = StyleSheet.create({
     color: Colors.neutral.darkGray,
     fontWeight: '500',
   },
+  stockTextEmpty: {
+    color: '#ef4444',
+    fontWeight: '600',
+  },
+  noVariantsText: {
+    fontSize: 11,
+    color: '#ef4444',
+    fontStyle: 'italic',
+  },
   actionContainer: {
     marginTop: 'auto', // Empuja el botón hacia abajo
     paddingTop: 8, // Espacio adicional arriba del botón
@@ -295,6 +342,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 3,
     elevation: 3,
+  },
+  cartButtonDisabled: {
+    backgroundColor: '#9ca3af',
+    shadowColor: '#9ca3af',
+    opacity: 0.6,
   },
   cartButtonText: {
     fontSize: 12,
