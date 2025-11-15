@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": false,
     "runtimeVersion": {
-      "policy": "nativeVersion"
+      "policy": "appVersion"
     },
     "updates": {
       "enabled": false,
@@ -48,6 +48,11 @@
           }
         }
       ]
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "5fb6376d-a84c-4505-b587-1f68067ad442"
+      }
+    }
   }
 }
