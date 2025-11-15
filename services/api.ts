@@ -398,7 +398,10 @@ class ApiService {
   async post<T>(endpoint: string, data?: any, token?: string): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'POST',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: data ? JSON.stringify(data) : undefined,
     });
   }
@@ -406,7 +409,10 @@ class ApiService {
   async put<T>(endpoint: string, data?: any, token?: string): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PUT',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: data ? JSON.stringify(data) : undefined,
     });
   }
@@ -414,7 +420,10 @@ class ApiService {
   async patch<T>(endpoint: string, data?: any, token?: string): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'PATCH',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: data ? JSON.stringify(data) : undefined,
     });
   }
@@ -422,7 +431,10 @@ class ApiService {
   async delete<T>(endpoint: string, token?: string): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
   }
 
