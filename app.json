@@ -29,7 +29,13 @@
       },
       "package": "com.aquapool.app",
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "NOTIFICATIONS"
+      ],
+      "useNextNotificationsApi": true
     },
     "web": {
       "output": "single",
@@ -46,6 +52,15 @@
           "dark": {
             "backgroundColor": "#000000"
           }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "color": "#0284c7",
+          "sounds": [],
+          "mode": "production"
         }
       ]
     ],

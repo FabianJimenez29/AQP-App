@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
 import ApiService from '../services/api';
+import notificationService from '../services/notificationService';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 type NavigationProp = StackNavigationProp<any>;
@@ -75,6 +76,19 @@ export default function LoginScreen() {
 
       // Si el login es exitoso, continúa al dashboard
       dispatch(loginSuccess(response));
+      
+      // Registrar el dispositivo para notificaciones push
+      try {
+        await notificationService.registerForPushNotifications(
+          response.user.id,
+          response.token
+        );
+        console.log('✅ Notificaciones push registradas exitosamente');
+      } catch (notifError) {
+        console.warn('⚠️ No se pudieron registrar las notificaciones push:', notifError);
+        // No bloqueamos el login si fallan las notificaciones
+      }
+      
       navigation.replace('Dashboard');
       
     } catch (error: any) {
