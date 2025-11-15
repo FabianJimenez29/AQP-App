@@ -69,7 +69,7 @@ interface Report {
 interface Order {
   id: number;
   order_number: string;
-  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  status: 'pending' | 'processing' | 'completed' | 'confirmed' | 'cancelled';
   notes?: string;
   created_at: string;
   technician_name?: string;
@@ -140,6 +140,8 @@ export default function ReportHistoryScreen() {
     switch (status) {
       case 'completed':
         return '#4CAF50';
+      case 'confirmed':
+        return '#4CAF50';
       case 'processing':
         return '#2196F3';
       case 'pending':
@@ -155,6 +157,8 @@ export default function ReportHistoryScreen() {
     switch (status) {
       case 'completed':
         return 'Completado';
+      case 'confirmed':
+        return 'Confirmado';
       case 'processing':
         return 'En Proceso';
       case 'pending':
@@ -314,7 +318,7 @@ export default function ReportHistoryScreen() {
               <View style={styles.summaryCard}>
                 <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
                 <Text style={styles.summaryNumber}>
-                  {orders.filter(o => o.status === 'completed').length || 0}
+                  {orders.filter(o => o.status === 'completed' || o.status === 'confirmed').length || 0}
                 </Text>
                 <Text style={styles.summaryLabel}>Completadas</Text>
               </View>
