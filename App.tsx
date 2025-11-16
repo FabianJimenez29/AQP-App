@@ -7,6 +7,7 @@ import { Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { store } from './store';
 import notificationService from './services/notificationService';
+import updateService from './services/updateService';
 
 // Import screens
 import LoginScreen from './screens/LoginScreen';
@@ -35,6 +36,9 @@ function AppContent() {
   const navigationRef = useRef<any>(null);
 
   useEffect(() => {
+    // Iniciar verificación automática de actualizaciones cada 30 minutos
+    updateService.startAutoCheck(30);
+
     // Listener para cuando se recibe una notificación (app en primer plano)
     const notificationListener = notificationService.addNotificationReceivedListener(
       (notification) => {
@@ -67,6 +71,7 @@ function AppContent() {
     return () => {
       notificationListener.remove();
       responseListener.remove();
+      updateService.stopAutoCheck();
     };
   }, []);
 

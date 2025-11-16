@@ -15,6 +15,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
 import { logout, updateUserProfile } from '../store/authSlice';
 import ApiService from '../services/api';
+import updateService from '../services/updateService';
 import { Ionicons } from '@expo/vector-icons';
 import Colors from '../constants/colors';
 import PoolHeader from '../components/ui/PoolHeader';
@@ -111,6 +112,10 @@ export default function ProfileScreen() {
     } else {
       Linking.openURL('mailto:fabianj.dev@gmail.com?subject=Soporte AquaPool App');
     }
+  };
+
+  const handleCheckUpdates = () => {
+    updateService.checkForUpdates(true);
   };
 
   const handleWhatsApp = () => {
@@ -273,6 +278,11 @@ export default function ProfileScreen() {
 
         {/* Logout Button */}
         <View style={styles.section}>
+          <TouchableOpacity style={styles.updateButton} onPress={handleCheckUpdates}>
+            <Ionicons name="refresh-outline" size={24} color="#0066CC" />
+            <Text style={styles.updateButtonText}>Buscar Actualizaciones</Text>
+          </TouchableOpacity>
+          
           <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
             <Ionicons name="log-out-outline" size={24} color="#f44336" />
             <Text style={styles.logoutButtonText}>Cerrar Sesión</Text>
@@ -496,6 +506,23 @@ const styles = StyleSheet.create({
   infoText: {
     fontSize: 12,
     color: Colors.neutral.gray,
+  },
+  updateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.neutral.white,
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: '#0066CC20',
+    marginBottom: 12,
+  },
+  updateButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0066CC',
   },
   logoutButton: {
     flexDirection: 'row',

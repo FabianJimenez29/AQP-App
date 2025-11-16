@@ -2,12 +2,12 @@
   "expo": {
     "name": "AquaPool Blue",
     "slug": "aquapool-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aqpapp",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -33,7 +33,10 @@
       "permissions": [
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "NOTIFICATIONS"
+        "NOTIFICATIONS",
+        "REQUEST_INSTALL_PACKAGES",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
       ],
       "useNextNotificationsApi": true
     },
@@ -66,8 +69,9 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "5fb6376d-a84c-4505-b587-1f68067ad442"
+        "projectId": "e9e1919d-40ff-411c-814b-5de1d4777bdf"
       }
-    }
+    },
+    "owner": "jotix"
   }
 }

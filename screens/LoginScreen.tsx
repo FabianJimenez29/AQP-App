@@ -79,13 +79,22 @@ export default function LoginScreen() {
       
       // Registrar el dispositivo para notificaciones push
       try {
-        await notificationService.registerForPushNotifications(
+        const pushToken = await notificationService.registerForPushNotifications(
           response.user.id,
           response.token
         );
-        console.log('✅ Notificaciones push registradas exitosamente');
+        if (pushToken) {
+          console.log('✅ Notificaciones push registradas exitosamente');
+          console.log('Token:', pushToken);
+        } else {
+          console.log('⚠️ No se pudo obtener el token de notificaciones');
+        }
       } catch (notifError) {
-        console.warn('⚠️ No se pudieron registrar las notificaciones push:', notifError);
+        console.warn('⚠️ Error al registrar notificaciones push:', notifError);
+        Alert.alert(
+          'Advertencia',
+          'No se pudieron configurar las notificaciones. La app funcionará normalmente pero no recibirás notificaciones push.'
+        );
         // No bloqueamos el login si fallan las notificaciones
       }
       
