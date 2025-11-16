@@ -2,7 +2,7 @@
   "expo": {
     "name": "AquaPool Blue",
     "slug": "aquapool-app",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aqpapp",
@@ -31,14 +31,10 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
-        "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE",
-        "NOTIFICATIONS",
         "REQUEST_INSTALL_PACKAGES",
         "READ_EXTERNAL_STORAGE",
         "WRITE_EXTERNAL_STORAGE"
-      ],
-      "useNextNotificationsApi": true
+      ]
     },
     "web": {
       "output": "single",
@@ -55,15 +51,6 @@
           "dark": {
             "backgroundColor": "#000000"
           }
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/icon.png",
-          "color": "#0284c7",
-          "sounds": [],
-          "mode": "production"
         }
       ]
     ],

@@ -17,7 +17,6 @@ import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
 import ApiService from '../services/api';
-import notificationService from '../services/notificationService';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 
 type NavigationProp = StackNavigationProp<any>;
@@ -76,27 +75,6 @@ export default function LoginScreen() {
 
       // Si el login es exitoso, continúa al dashboard
       dispatch(loginSuccess(response));
-      
-      // Registrar el dispositivo para notificaciones push
-      try {
-        const pushToken = await notificationService.registerForPushNotifications(
-          response.user.id,
-          response.token
-        );
-        if (pushToken) {
-          console.log('✅ Notificaciones push registradas exitosamente');
-          console.log('Token:', pushToken);
-        } else {
-          console.log('⚠️ No se pudo obtener el token de notificaciones');
-        }
-      } catch (notifError) {
-        console.warn('⚠️ Error al registrar notificaciones push:', notifError);
-        Alert.alert(
-          'Advertencia',
-          'No se pudieron configurar las notificaciones. La app funcionará normalmente pero no recibirás notificaciones push.'
-        );
-        // No bloqueamos el login si fallan las notificaciones
-      }
       
       navigation.replace('Dashboard');
       
