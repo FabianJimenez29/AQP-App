@@ -33,7 +33,6 @@ export default function LoginScreen() {
   const dispatch = useDispatch();
   const navigation = useNavigation<NavigationProp>();
 
-  // Verificar conexión al servidor al cargar la pantalla
   useEffect(() => {
     checkServerConnection();
   }, []);
@@ -44,7 +43,6 @@ export default function LoginScreen() {
       const health = await ApiService.checkServerHealth();
       if (health.success) {
         setConnectionStatus('connected');
-        // Extraer información de la URL del Cloudflare Tunnel
         const currentUrl = ApiService.apiUrl;
         const tunnelMatch = currentUrl.match(/https:\/\/(.*?)\.trycloudflare\.com/);
         setServerIP(tunnelMatch ? `Cloudflare: ${tunnelMatch[1]}` : 'Cloudflare Tunnel');
@@ -68,12 +66,10 @@ export default function LoginScreen() {
     try {
       const response = await ApiService.login({ email, password });
       
-      // Validar que la respuesta tenga los datos necesarios
       if (!response || !response.user || !response.token) {
         throw new Error('Respuesta del servidor inválida');
       }
 
-      // Si el login es exitoso, continúa al dashboard
       dispatch(loginSuccess(response));
       
       navigation.replace('Dashboard');
@@ -81,7 +77,6 @@ export default function LoginScreen() {
     } catch (error: any) {
       dispatch(loginFailure());
       
-      // Manejar diferentes tipos de errores
       let errorTitle = 'Error de Autenticación';
       let errorMessage = 'No se pudo iniciar sesión';
       let errorCode = 'UNKNOWN_ERROR';
@@ -150,7 +145,6 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Header con gradiente visual */}
         <View style={styles.header}>
           <View style={styles.logoBackgroundContainer}>
             <Image 
@@ -159,7 +153,6 @@ export default function LoginScreen() {
               resizeMode="contain"
             />
             
-            {/* Indicador de conexión integrado */}
             <View style={styles.connectionBadge}>
               <Ionicons 
                 name={connectionStatus === 'connected' ? 'checkmark-circle' : connectionStatus === 'checking' ? 'time-outline' : 'alert-circle'} 
@@ -183,9 +176,7 @@ export default function LoginScreen() {
           <Text style={styles.subtitle}>Inicia sesión para continuar</Text>
         </View>
 
-        {/* Formulario con diseño moderno */}
         <View style={styles.formContainer}>
-          {/* Campo de Email */}
           <View style={styles.inputContainer}>
             <View style={styles.inputIconContainer}>
               <MaterialIcons name="email" size={20} color={emailFocused ? '#0066CC' : '#999'} />
@@ -203,7 +194,6 @@ export default function LoginScreen() {
             />
           </View>
 
-          {/* Campo de Password */}
           <View style={styles.inputContainer}>
             <View style={styles.inputIconContainer}>
               <MaterialIcons name="lock" size={20} color={passwordFocused ? '#0066CC' : '#999'} />
@@ -230,7 +220,6 @@ export default function LoginScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Botón de Login con gradiente simulado */}
           <TouchableOpacity
             style={[styles.loginButton, isLoading && styles.loginButtonDisabled]}
             onPress={handleLogin}
@@ -250,7 +239,6 @@ export default function LoginScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Acceso Rápido con diseño mejorado */}
           <View style={styles.quickLoginContainer}>
             <View style={styles.dividerContainer}>
               <View style={styles.divider} />
@@ -284,7 +272,6 @@ export default function LoginScreen() {
           </View>
         </View>
         
-        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>AQUAPOOL © 2024</Text>
           <Text style={styles.footerSubtext}>Sistema de Gestión de Mantenimiento</Text>

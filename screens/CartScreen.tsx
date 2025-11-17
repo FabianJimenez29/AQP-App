@@ -34,7 +34,6 @@ const CartScreen: React.FC = () => {
   const { items, totalItems, totalAmount, isSubmitting, error, lastOrderNumber } = useSelector((state: RootState) => state.cart);
   const { user } = useSelector((state: RootState) => state.auth);
 
-  // Form state
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [notes, setNotes] = useState('');
 
@@ -76,13 +75,11 @@ const CartScreen: React.FC = () => {
   };
 
   const handleSubmitOrder = async () => {
-    // Validaciones
     if (items.length === 0) {
       Alert.alert('Error', 'El carrito está vacío');
       return;
     }
 
-    // Preparar datos del pedido
     const orderData: CreateOrderRequest = {
       items: items.map(item => ({
         product_id: item.productId,
@@ -106,10 +103,8 @@ const CartScreen: React.FC = () => {
           {
             text: 'OK',
             onPress: () => {
-              // Limpiar formulario
               setDeliveryAddress('');
               setNotes('');
-              // Volver a productos
               navigation.navigate('Products');
             }
           }
@@ -120,7 +115,6 @@ const CartScreen: React.FC = () => {
     }
   };
 
-  // Si no hay items en el carrito
   if (items.length === 0) {
     return (
       <SafeAreaView style={styles.container}>
@@ -134,27 +128,26 @@ const CartScreen: React.FC = () => {
           <Text style={styles.headerTitle}>Carrito de Compras</Text>
         </View>
 
-                  <View style={styles.emptyContainer}>
-            <Ionicons name="document-text-outline" size={80} color={Colors.neutral.gray} />
-            <Text style={styles.emptyTitle}>Sin productos en la orden</Text>
-            <Text style={styles.emptySubtitle}>
-              Agrega productos desde la pantalla de productos para crear una orden de compra
-            </Text>
-            <TouchableOpacity 
-              style={styles.shopButton}
-              onPress={() => navigation.navigate('Products')}
-            >
-              <Ionicons name="storefront-outline" size={20} color="white" />
-              <Text style={styles.shopButtonText}>Ir a Productos</Text>
-            </TouchableOpacity>
-          </View>
+        <View style={styles.emptyContainer}>
+          <Ionicons name="document-text-outline" size={80} color={Colors.neutral.gray} />
+          <Text style={styles.emptyTitle}>Sin productos en la orden</Text>
+          <Text style={styles.emptySubtitle}>
+            Agrega productos desde la pantalla de productos para crear una orden de compra
+          </Text>
+          <TouchableOpacity 
+            style={styles.shopButton}
+            onPress={() => navigation.navigate('Products')}
+          >
+            <Ionicons name="storefront-outline" size={20} color="white" />
+            <Text style={styles.shopButtonText}>Ir a Productos</Text>
+          </TouchableOpacity>
+        </View>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Modern Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           onPress={() => navigation.goBack()} 
@@ -172,7 +165,6 @@ const CartScreen: React.FC = () => {
       </View>
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Summary Card */}
         <View style={styles.summaryCard}>
           <View style={styles.summaryIconContainer}>
             <Ionicons name="document-text" size={32} color="white" />
@@ -183,7 +175,6 @@ const CartScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Cart Items */}
         <View style={styles.itemsContainer}>
           <View style={styles.sectionTitleContainer}>
             <Ionicons name="cube-outline" size={20} color="#1a1a1a" />
@@ -191,7 +182,6 @@ const CartScreen: React.FC = () => {
           </View>
           {items.map((item, index) => (
             <View key={item.id} style={styles.cartItem}>
-              {/* Product Info */}
               <View style={styles.itemHeader}>
                 <View style={styles.itemNumberBadge}>
                   <Text style={styles.itemNumberText}>{index + 1}</Text>
@@ -213,7 +203,6 @@ const CartScreen: React.FC = () => {
                 </TouchableOpacity>
               </View>
 
-              {/* Quantity Controls */}
               <View style={styles.itemFooter}>
                 <View style={styles.quantityContainer}>
                   <TouchableOpacity
@@ -241,14 +230,12 @@ const CartScreen: React.FC = () => {
           ))}
         </View>
 
-        {/* Order Form */}
         <View style={styles.formContainer}>
           <View style={styles.sectionTitleContainer}>
             <Ionicons name="document-text-outline" size={20} color="#1a1a1a" />
             <Text style={styles.sectionTitle}>Detalles del Pedido</Text>
           </View>
           
-          {/* Technician Info */}
           <View style={styles.technicianCard}>
             <View style={styles.technicianIcon}>
               <Ionicons name="person" size={20} color="#0066CC" />
@@ -262,7 +249,6 @@ const CartScreen: React.FC = () => {
             </View>
           </View>
 
-          {/* Delivery Address */}
           <View style={styles.inputGroup}>
             <View style={styles.inputLabelContainer}>
               <Ionicons name="location" size={16} color="#666" />
@@ -277,7 +263,6 @@ const CartScreen: React.FC = () => {
             />
           </View>
 
-          {/* Notes */}
           <View style={styles.inputGroup}>
             <View style={styles.inputLabelContainer}>
               <Ionicons name="chatbox-ellipses-outline" size={16} color="#666" />
@@ -296,7 +281,6 @@ const CartScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* Error Message */}
         {error && (
           <View style={styles.errorContainer}>
             <Ionicons name="alert-circle" size={20} color="#f44336" />
@@ -310,7 +294,6 @@ const CartScreen: React.FC = () => {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      {/* Submit Button */}
       <View style={styles.submitContainer}>
         <TouchableOpacity
           style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
@@ -344,8 +327,6 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  
-  // Header
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -391,8 +372,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
-  // Summary Card
   summaryCard: {
     backgroundColor: '#0066CC',
     marginHorizontal: 16,
@@ -425,28 +404,10 @@ const styles = StyleSheet.create({
     color: 'white',
     marginBottom: 4,
   },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  summaryLabel: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '500',
-  },
-  summaryValue: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: 'white',
-  },
   summaryLabelSmall: {
     fontSize: 13,
     color: 'rgba(255, 255, 255, 0.9)',
   },
-  
-  // Items Container
   sectionTitleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -564,8 +525,6 @@ const styles = StyleSheet.create({
     color: '#666',
     fontWeight: '500',
   },
-  
-  // Form
   formContainer: {
     padding: 16,
     backgroundColor: 'white',
@@ -641,8 +600,6 @@ const styles = StyleSheet.create({
     minHeight: 100,
     textAlignVertical: 'top',
   },
-  
-  // Empty State
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -682,8 +639,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  
-  // Error
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -705,8 +660,6 @@ const styles = StyleSheet.create({
   dismissButton: {
     padding: 4,
   },
-  
-  // Submit Container
   submitContainer: {
     backgroundColor: 'white',
     paddingHorizontal: 16,

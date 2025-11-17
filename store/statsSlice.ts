@@ -68,7 +68,6 @@ const statsSlice = createSlice({
       state.error = null;
     },
     
-    // Para agregar un nuevo reporte a las estadísticas inmediatamente
     incrementTodayReports: (state) => {
       if (state.userStats) {
         state.userStats.todayReports += 1;
@@ -79,7 +78,6 @@ const statsSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // fetchUserStats
     builder
       .addCase(fetchUserStats.pending, (state) => {
         state.isLoading = true;
@@ -95,7 +93,6 @@ const statsSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // fetchUserReports
     builder
       .addCase(fetchUserReports.pending, (state) => {
         state.isLoading = true;
@@ -110,7 +107,6 @@ const statsSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // fetchUserReport
     builder
       .addCase(fetchUserReport.pending, (state) => {
         state.isLoading = true;
@@ -124,7 +120,6 @@ const statsSlice = createSlice({
         state.error = action.payload as string;
       });
 
-    // Limpiar estadísticas al hacer logout
     builder.addCase(logout, (state) => {
       state.userStats = null;
       state.reportHistory = null;

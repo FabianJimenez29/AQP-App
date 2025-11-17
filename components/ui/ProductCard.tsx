@@ -16,7 +16,7 @@ import { addToCart } from '../../store/cartSlice';
 import { AppDispatch } from '../../store';
 
 const { width } = Dimensions.get('window');
-const cardWidth = (width - 48) / 2; // 2 columnas con padding
+const cardWidth = (width - 48) / 2;
 
 interface ProductCardProps {
   product: Product;
@@ -25,25 +25,20 @@ interface ProductCardProps {
 const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
   const dispatch = useDispatch<AppDispatch>();
   
-  // Obtener todas las variantes (con y sin stock)
   const allVariants = product.variants || [];
   
-  // Filtrar solo las que tienen stock
   const variantsWithStock = allVariants.filter(v => v.stock > 0);
   
-  // Seleccionar la primera variante con stock, o null si no hay ninguna
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(
     variantsWithStock.length > 0 ? variantsWithStock[0] : null
   );
 
   const handleVariantSelect = (variant: ProductVariant) => {
-    // Solo permitir seleccionar variantes con stock
     if (variant.stock > 0) {
       setSelectedVariant(variant);
     }
   };
 
-  // Determinar si el producto/variante tiene stock
   const hasStock = product.has_variants 
     ? (selectedVariant && selectedVariant.stock > 0)
     : (product.stock > 0);
@@ -52,7 +47,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   const handleAddToCart = () => {
     try {
-      // Verificar stock antes de agregar
       if (product.has_variants && selectedVariant) {
         if (selectedVariant.stock <= 0) {
           Alert.alert('Sin stock', `${product.name} (${selectedVariant.variant_name}) no tiene stock disponible`);
@@ -65,7 +59,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           variantId: selectedVariant.id,
           variantName: selectedVariant.variant_name,
           quantity: 1,
-          unitPrice: 0, // Precio por defecto
+          unitPrice: 0, 
         }));
         
         Alert.alert(
@@ -82,7 +76,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           productId: product.id,
           productName: product.name,
           quantity: 1,
-          unitPrice: 0, // Precio por defecto
+          unitPrice: 0, 
         }));
         
         Alert.alert(
@@ -101,9 +95,7 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
   return (
     <View style={styles.card}>
-      {/* Content Container */}
       <View style={styles.contentContainer}>
-        {/* Image Container */}
         <View style={styles.imageContainer}>
           <Ionicons 
             name="cube-outline" 
@@ -113,7 +105,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           />
         </View>
 
-        {/* 1. Nombre del producto */}
         <View style={styles.titleContainer}>
           <Text style={styles.title} numberOfLines={2}>
             {product.name}
@@ -122,14 +113,12 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
 
     
 
-        {/* 3. Descripción */}
         <View style={styles.descriptionContainer}>
           <Text style={styles.description} numberOfLines={2}>
             {product.description || 'Sin descripción disponible'}
           </Text>
         </View>
 
-        {/* 4. Stock */}
         <View style={styles.stockContainer}>
           <View style={styles.stockRow}>
             <Ionicons 
@@ -148,7 +137,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </View>
         </View>
 
-        {/* 5. Variantes (espacio reservado siempre) */}
         <View style={styles.variantsContainer}>
           {product.has_variants && allVariants.length > 0 ? (
             <>
@@ -192,7 +180,6 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         </View>
       </View>
 
-      {/* Action - Always at bottom */}
       <View style={styles.actionContainer}>
         <TouchableOpacity 
           style={[
@@ -218,9 +205,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     paddingTop: 16,
     paddingHorizontal: 16,
-    paddingBottom: 15, // Menos padding inferior para que el botón esté más abajo
+    paddingBottom: 15,
     width: cardWidth,
-    height: 340, // ✅ Aumenté de 320 a 350px para extender el card blanco hacia abajo
+    height: 340, // 
     marginBottom: 16,
     shadowColor: '#000',
     shadowOffset: {
@@ -230,7 +217,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 8,
     elevation: 5,
-    justifyContent: 'space-between', // Distribuir el contenido uniformemente
+    justifyContent: 'space-between', 
   },
   contentContainer: {
     flex: 1,
@@ -274,7 +261,7 @@ const styles = StyleSheet.create({
   },
   variantsContainer: {
     marginBottom: 8,
-    minHeight: 50, // Altura mínima fija para la sección de variantes
+    minHeight: 50, 
     justifyContent: 'flex-start',
   },
   variantsLabel: {
@@ -355,8 +342,8 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   actionContainer: {
-    marginTop: 'auto', // Empuja el botón hacia abajo
-    paddingTop: 8, // Espacio adicional arriba del botón
+    marginTop: 'auto', 
+    paddingTop: 8,
   },
   cartButton: {
     flexDirection: 'row',

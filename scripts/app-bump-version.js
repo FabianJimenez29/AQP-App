@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-// Obtener el tipo de versión del argumento (patch, minor, major)
 const versionType = process.argv[2] || 'patch';
 
 if (!['patch', 'minor', 'major'].includes(versionType)) {
@@ -16,18 +15,14 @@ if (!['patch', 'minor', 'major'].includes(versionType)) {
   process.exit(1);
 }
 
-// Rutas de los archivos
 const appJsonPath = path.join(__dirname, '..', 'app.json');
 const updateServicePath = path.join(__dirname, '..', 'services', 'updateService.ts');
 
-// Leer app.json
 const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
 const currentVersion = appJson.expo.version;
 
-// Parsear versión actual
 const [major, minor, patch] = currentVersion.split('.').map(Number);
 
-// Calcular nueva versión
 let newVersion;
 switch (versionType) {
   case 'major':
@@ -44,12 +39,10 @@ switch (versionType) {
 
 console.log(`\n📱 Actualizando versión de la APP MÓVIL: ${currentVersion} → ${newVersion}\n`);
 
-// Actualizar app.json
 appJson.expo.version = newVersion;
 fs.writeFileSync(appJsonPath, JSON.stringify(appJson, null, 2) + '\n');
 console.log('✅ Actualizado: app.json');
 
-// Actualizar updateService.ts
 let updateServiceContent = fs.readFileSync(updateServicePath, 'utf8');
 updateServiceContent = updateServiceContent.replace(
   /private currentVersion = ['"][\d.]+['"]/,
@@ -60,7 +53,6 @@ console.log('✅ Actualizado: services/updateService.ts');
 
 console.log(`\n🎉 Versión de la APP actualizada exitosamente a ${newVersion}\n`);
 
-// Hacer commit y push automáticamente
 try {
   console.log('📝 Haciendo commit...');
   execSync('git add app.json services/updateService.ts', { stdio: 'inherit' });

@@ -49,13 +49,13 @@ export interface Report {
   reportNumber: string;
   clientName: string;
   location: string;
-  entryTime: string; // ISO string format
-  exitTime?: string; // ISO string format
+  entryTime: string; 
+  exitTime?: string;
   userId: string;
-  beforePhoto: string; // S3 URL
-  beforePhotoKey?: string; // S3 object key for deletion/management
-  afterPhoto?: string; // S3 URL  
-  afterPhotoKey?: string; // S3 object key for deletion/management
+  beforePhoto: string; 
+  beforePhotoKey?: string; 
+  afterPhoto?: string; 
+  afterPhotoKey?: string; 
   parametersBefore: Parameters;
   parametersAfter?: Parameters;
   chemicals: Chemicals;
@@ -64,9 +64,9 @@ export interface Report {
   observations: string;
   technician: string;
   receivedBy: string;
-  signature?: string; // Can also be stored in S3 if needed
-  signatureKey?: string; // S3 object key for signature
-  createdAt: string; // ISO string format
+  signature?: string; 
+  signatureKey?: string; 
+  createdAt: string; 
 }
 
 export interface AuthState {
@@ -83,7 +83,6 @@ export interface ReportState {
   error: string | null;
 }
 
-// Product types
 export interface ProductVariant {
   id: number;
   variant_name: string;

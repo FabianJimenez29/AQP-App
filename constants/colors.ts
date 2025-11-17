@@ -1,15 +1,12 @@
-// Colores basados en el logo de AQUA POOL BLUE CR
 export const Colors = {
-  // Colores principales del logo
   primary: {
-    blue: '#1B5E9F',      // Azul de la piscina
-    lightBlue: '#4A90D9',  // Azul más claro
-    green: '#2E7D32',      // Verde de las palmeras
-    yellow: '#FFD54F',     // Amarillo del sol
-    orange: '#FF8F00',     // Naranja del atardecer
+    blue: '#1B5E9F',     
+    lightBlue: '#4A90D9', 
+    green: '#2E7D32',     
+    yellow: '#FFD54F',    
+    orange: '#FF8F00',     
   },
   
-  // Colores neutros
   neutral: {
     white: '#FFFFFF',
     lightGray: '#F5F7FA',
@@ -18,7 +15,6 @@ export const Colors = {
     black: '#1C1C1E',
   },
   
-  // Colores de estado
   status: {
     success: '#34C759',
     warning: '#FF9500',
@@ -26,14 +22,12 @@ export const Colors = {
     info: '#007AFF',
   },
 
-  // Colores de peligro/alerta
   danger: {
     red: '#FF3B30',
     lightRed: '#FFEBEE',
     darkRed: '#D32F2F',
   },
   
-  // Gradientes
   gradients: {
     poolBlue: ['#1B5E9F', '#4A90D9'],
     sunset: ['#FFD54F', '#FF8F00'],

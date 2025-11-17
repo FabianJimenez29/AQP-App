@@ -5,18 +5,15 @@ const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 
-// Leer la versión actual de la app
 const appJsonPath = path.join(__dirname, '..', 'app.json');
 const appJson = JSON.parse(fs.readFileSync(appJsonPath, 'utf8'));
 const currentVersion = appJson.expo.version;
 
 console.log(`\n🔍 Buscando release v${currentVersion} en GitHub...\n`);
 
-// Configuración de GitHub
 const GITHUB_OWNER = 'FabianJimenez29';
 const GITHUB_REPO = 'AQP-App';
 
-// Función para obtener el último release desde GitHub
 function getLatestRelease() {
   return new Promise((resolve, reject) => {
     const options = {
@@ -49,13 +46,10 @@ function getLatestRelease() {
   });
 }
 
-// Función principal
 async function updateBackend() {
   try {
-    // Obtener información del release
     const release = await getLatestRelease();
     
-    // Buscar el archivo APK en los assets
     const apkAsset = release.assets.find(asset => 
       asset.name.includes('.apk') && asset.name.includes(currentVersion)
     );
@@ -73,7 +67,6 @@ async function updateBackend() {
     console.log(`✅ APK encontrado: ${apkAsset.name}`);
     console.log(`📦 URL: ${downloadUrl}\n`);
 
-    // Ruta al archivo del backend
     const backendPath = path.join(__dirname, '..', '..', 'AQP-backend', 'src', 'routes', 'app-version.js');
     
     if (!fs.existsSync(backendPath)) {
@@ -82,14 +75,11 @@ async function updateBackend() {
       process.exit(1);
     }
 
-    // Leer el archivo del backend
     let backendContent = fs.readFileSync(backendPath, 'utf8');
 
-    // Actualizar la información
     const releaseNotes = release.body || 'Actualización de la aplicación móvil';
     const cleanNotes = releaseNotes.split('\n')[0].replace(/[#*]/g, '').trim();
 
-    // Reemplazar la configuración
     backendContent = backendContent.replace(
       /const latestVersion = \{[\s\S]*?\};/,
       `const latestVersion = {
@@ -100,11 +90,9 @@ async function updateBackend() {
 };`
     );
 
-    // Guardar el archivo
     fs.writeFileSync(backendPath, backendContent);
     console.log('✅ Actualizado: AQP-backend/src/routes/app-version.js\n');
 
-    // Hacer commit y push en el backend
     try {
       const backendDir = path.join(__dirname, '..', '..', 'AQP-backend');
       
@@ -141,5 +129,4 @@ async function updateBackend() {
   }
 }
 
-// Ejecutar
 updateBackend();

@@ -183,13 +183,12 @@ export default function ReportHistoryScreen() {
   };
 
   const getStatusColor = (report: Report) => {
-    // Determinar estado basado en si tiene fotos y datos completos
     if (report.before_photo_url && report.after_photo_url) {
-      return '#4CAF50'; // Verde - Completo
+      return '#4CAF50'; 
     } else if (report.before_photo_url || report.after_photo_url) {
-      return '#FF9800'; // Naranja - Parcial
+      return '#FF9800'; 
     } else {
-      return '#f44336'; // Rojo - Sin fotos
+      return '#f44336'; 
     }
   };
 
@@ -210,20 +209,16 @@ export default function ReportHistoryScreen() {
     </View>
   );
 
-  // Function to check if URL is a valid image URL
   const isValidImageUrl = (url: string | undefined): boolean => {
     if (!url) return false;
-    // Acepta URLs completas de Cloudflare o rutas relativas
     return url.startsWith('https://') || url.startsWith('http://') || url.startsWith('/uploads/') || url.startsWith('uploads/');
   };
 
-  // Function to get the complete image URL
   const getCompleteImageUrl = (url: string | undefined): string | null => {
     return getImageUrl(url);
   };
 
   const sendReportViaWhatsApp = (report: Report) => {
-    // Formatear el mensaje del reporte
     let message = `*🏊 REPORTE DE MANTENIMIENTO DE PISCINA*\n\n`;
     message += `*Número de Reporte:* ${report.report_number}\n`;
     message += `*Cliente:* ${report.client_name}\n`;
@@ -231,7 +226,6 @@ export default function ReportHistoryScreen() {
     message += `*Técnico:* ${report.technician}\n`;
     message += `*Fecha:* ${formatDate(report.created_at)}\n\n`;
 
-    // Parámetros Antes
     if (report.parameters_before) {
       message += `*📊 PARÁMETROS ANTES DEL MANTENIMIENTO*\n`;
       message += `• Cloro Libre: ${report.parameters_before.cl} ppm\n`;
@@ -243,7 +237,6 @@ export default function ReportHistoryScreen() {
       message += `• Temperatura: ${report.parameters_before.temperature} °C\n\n`;
     }
 
-    // Químicos Utilizados
     if (report.chemicals) {
       const chemicalsUsed = [];
       if (report.chemicals.tricloro > 0) chemicalsUsed.push(`• Tricloro: ${report.chemicals.tricloro} kg`);
@@ -261,7 +254,6 @@ export default function ReportHistoryScreen() {
       }
     }
 
-    // Parámetros Después
     if (report.parameters_after) {
       message += `*📈 PARÁMETROS DESPUÉS DEL MANTENIMIENTO*\n`;
       message += `• Cloro Libre: ${report.parameters_after.cl} ppm\n`;
@@ -273,7 +265,6 @@ export default function ReportHistoryScreen() {
       message += `• Temperatura: ${report.parameters_after.temperature} °C\n\n`;
     }
 
-    // Información Adicional
     if (report.materials_delivered) {
       message += `*📦 Materiales Entregados:* ${report.materials_delivered}\n`;
     }
@@ -286,11 +277,9 @@ export default function ReportHistoryScreen() {
 
     message += `\n_Reporte generado por AquaPool App_`;
 
-    // Codificar el mensaje para URL
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
 
-    // Abrir WhatsApp
     Linking.openURL(whatsappUrl).catch(() => {
       Alert.alert('Error', 'No se pudo abrir WhatsApp. Asegúrate de tener WhatsApp instalado.');
     });
@@ -308,7 +297,6 @@ export default function ReportHistoryScreen() {
         }}
       />
 
-      {/* Tabs */}
       <View style={styles.tabsContainer}>
         <TouchableOpacity 
           style={[styles.tab, activeTab === 'reports' && styles.activeTab]}
@@ -339,7 +327,6 @@ export default function ReportHistoryScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Stats Summary */}
       <View style={styles.summarySection}>
         <Text style={styles.summaryTitle}>
           {activeTab === 'reports' ? 'Resumen de Reportes' : 'Resumen de Órdenes'}
@@ -470,7 +457,6 @@ export default function ReportHistoryScreen() {
           ))
           )
         ) : (
-          // Orders Tab
           loadingOrders ? (
             <View style={styles.loadingContainer}>
               <Text style={styles.loadingText}>Cargando órdenes...</Text>
@@ -514,7 +500,6 @@ export default function ReportHistoryScreen() {
         )}
       </ScrollView>
 
-      {/* Order Detail Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -562,7 +547,6 @@ export default function ReportHistoryScreen() {
                 </View>
               </View>
 
-              {/* Order Items */}
               {selectedOrder.items && selectedOrder.items.length > 0 && (
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>Productos</Text>
@@ -584,7 +568,6 @@ export default function ReportHistoryScreen() {
         )}
       </Modal>
 
-      {/* Report Detail Modal */}
       <Modal
         animationType="slide"
         transparent={false}
@@ -593,7 +576,6 @@ export default function ReportHistoryScreen() {
       >
         {selectedReport && (
           <View style={styles.modalContainer}>
-            {/* Modal Header */}
             <View style={styles.modalHeader}>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color="white" />
@@ -608,7 +590,6 @@ export default function ReportHistoryScreen() {
             </View>
 
             <ScrollView style={styles.modalContent}>
-              {/* Report Info */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Información General</Text>
                 <View style={styles.infoGrid}>
@@ -629,7 +610,6 @@ export default function ReportHistoryScreen() {
                 </View>
               </View>
 
-              {/* Photos */}
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Fotografías</Text>
                 <View style={styles.photosGrid}>
@@ -667,7 +647,6 @@ export default function ReportHistoryScreen() {
                 </View>
               </View>
 
-              {/* Parameters */}
               {selectedReport.parameters_before && (
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>Parámetros Antes</Text>
@@ -698,7 +677,6 @@ export default function ReportHistoryScreen() {
                 </View>
               )}
 
-              {/* Chemicals */}
               {selectedReport.chemicals && (
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>Químicos Utilizados</Text>
@@ -716,7 +694,6 @@ export default function ReportHistoryScreen() {
                 </View>
               )}
 
-              {/* Additional Info */}
               {(selectedReport.materials_delivered || selectedReport.observations || selectedReport.received_by) && (
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>Información Adicional</Text>

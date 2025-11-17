@@ -88,7 +88,6 @@ export default function DashboardScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header Moderno */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 10, 50) }]}>
         <View style={styles.headerTop}>
           <View style={styles.logoSection}>
@@ -133,7 +132,6 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Stats Cards Modernos */}
         <View style={styles.statsSection}>
           <View style={styles.statsGrid}>
             <View style={[styles.statCard, styles.statCardPrimary]}>
@@ -187,7 +185,6 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Acciones Rápidas con nuevo diseño */}
         <View style={styles.actionsSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
@@ -247,7 +244,6 @@ export default function DashboardScreen() {
           </View>
         </View>
 
-        {/* Actividad Reciente */}
         <View style={styles.activitySection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Actividad Reciente</Text>
@@ -402,7 +398,6 @@ const styles = StyleSheet.create({
     color: '#1a1a1a',
   },
   
-  // Stats Section
   statsSection: {
     padding: 20,
     paddingTop: 20,
@@ -491,7 +486,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   
-  // Actions Section
   actionsSection: {
     paddingHorizontal: 20,
     paddingBottom: 20,
@@ -554,7 +548,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   
-  // Activity Section
   activitySection: {
     paddingHorizontal: 20,
     paddingBottom: 20,

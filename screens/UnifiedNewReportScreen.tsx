@@ -31,34 +31,28 @@ export default function UnifiedNewReportScreen() {
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
 
-  // Current Step
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 8;
 
-  // Form State
   const [clientName, setClientName] = useState('');
   const [location, setLocation] = useState('');
   const [beforePhoto, setBeforePhoto] = useState<string | null>(null);
   const [afterPhoto, setAfterPhoto] = useState<string | null>(null);
   const [showParametersAfter, setShowParametersAfter] = useState(false);
   
-  // Parameters Before
   const [parametersBefore, setParametersBefore] = useState<Parameters>({
     cl: 0, ph: 0, alk: 0, stabilizer: 0, hardness: 0, salt: 0, temperature: 0
   });
   
-  // Parameters After (initially hidden)
   const [parametersAfter, setParametersAfter] = useState<Parameters>({
     cl: 0, ph: 0, alk: 0, stabilizer: 0, hardness: 0, salt: 0, temperature: 0
   });
 
-  // Chemicals
   const [chemicals, setChemicals] = useState<Chemicals>({
     tricloro: 0, tabletas: 0, acido: 0, soda: 0, bicarbonato: 0,
     sal: 0, alguicida: 0, clarificador: 0, cloro_liquido: 0
   });
 
-  // Equipment
   const [equipmentCheck, setEquipmentCheck] = useState<EquipmentCheck>({
     bomba_filtro: false, bomba_reposadero: false, bomba_espejo: false,
     bomba_jets: false, blower: false, luces_piscina: false, luces_spa: false,
@@ -67,12 +61,10 @@ export default function UnifiedNewReportScreen() {
     clorinador_espejo: false
   });
 
-  // Materials and Observations
   const [materialsDelivered, setMaterialsDelivered] = useState('');
   const [observations, setObservations] = useState('');
   const [receivedBy, setReceivedBy] = useState('');
 
-  // Check if all parameters before are filled
   useEffect(() => {
     const allParametersBeforeFilled = Object.values(parametersBefore).every(value => value > 0);
     if (allParametersBeforeFilled && !showParametersAfter) {
@@ -166,11 +158,9 @@ export default function UnifiedNewReportScreen() {
               dispatch(setLoading(true));
               dispatch(setError(null));
 
-              // El número de reporte se generará en el servidor de forma consecutiva
-              // Usar ID temporal para las imágenes
+
               const tempId = `temp_${Date.now()}`;
 
-              // Subir imágenes a S3 antes de crear el reporte
               let beforePhotoUrl = '';
               let afterPhotoUrl = '';
 
@@ -205,15 +195,14 @@ export default function UnifiedNewReportScreen() {
               }
 
               const reportData = {
-                // reportNumber se generará automáticamente en el servidor
                 clientName: clientName.trim(),
                 location: location.trim(),
                 technician: user?.name || 'Técnico',
                 entryTime: new Date().toISOString(),
                 exitTime: new Date().toISOString(),
                 userId: user?.id || 'unknown',
-                beforePhoto: beforePhotoUrl, // URL de S3
-                afterPhoto: afterPhotoUrl,   // URL de S3
+                beforePhoto: beforePhotoUrl, 
+                afterPhoto: afterPhotoUrl,  
                 parametersBefore,
                 parametersAfter,
                 chemicals,
@@ -226,7 +215,6 @@ export default function UnifiedNewReportScreen() {
 
               const savedReport = await ApiService.createReport(reportData as any, token || '');
               
-              // Incrementar estadísticas inmediatamente
               dispatch(incrementTodayReports());
               
               Alert.alert(
@@ -315,10 +303,10 @@ export default function UnifiedNewReportScreen() {
       case 1: return clientName.trim() && location.trim();
       case 2: return beforePhoto !== null;
       case 3: return Object.values(parametersBefore).every(v => v > 0);
-      case 4: return true; // Chemicals optional
-      case 5: return true; // Equipment optional
+      case 4: return true;
+      case 5: return true; 
       case 6: return Object.values(parametersAfter).every(v => v > 0);
-      case 7: return true; // Materials optional
+      case 7: return true; 
       case 8: return afterPhoto !== null;
       default: return false;
     }
@@ -326,7 +314,6 @@ export default function UnifiedNewReportScreen() {
 
   return (
     <View style={styles.fullContainer}>
-      {/* Modern Header */}
       <View style={[styles.header, { paddingTop: Math.max(insets.top + 10, 50) }]}>
         <View style={styles.headerContent}>
           <TouchableOpacity 
@@ -348,7 +335,6 @@ export default function UnifiedNewReportScreen() {
           </View>
         </View>
 
-        {/* Progress Bar */}
         <View style={styles.progressBarContainer}>
           <View style={styles.progressBarBackground}>
             <View style={[styles.progressBarFill, { width: `${getStepProgress()}%` }]} />
@@ -362,7 +348,6 @@ export default function UnifiedNewReportScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Step Indicators */}
         <View style={styles.stepIndicators}>
           <View style={styles.stepIndicatorsContainer}>
             {[
@@ -406,9 +391,7 @@ export default function UnifiedNewReportScreen() {
           </View>
         </View>
 
-        {/* Step Content */}
         <View style={styles.content}>
-          {/* Step 1: Basic Information */}
           {currentStep === 1 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
@@ -472,7 +455,6 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {/* Step 2: Before Photo */}
           {currentStep === 2 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
@@ -533,7 +515,6 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {/* Step 3: Parameters Before */}
           {currentStep === 3 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
@@ -569,7 +550,6 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {/* Step 4: Chemicals */}
           {currentStep === 4 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
@@ -603,7 +583,6 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {/* Step 5: Equipment */}
           {currentStep === 5 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
@@ -656,7 +635,6 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {/* Step 6: Parameters After */}
           {currentStep === 6 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
@@ -690,7 +668,6 @@ export default function UnifiedNewReportScreen() {
                 ))}
               </View>
 
-              {/* Comparison Card */}
               <View style={styles.comparisonCard}>
                 <Text style={styles.comparisonTitle}>
                   <MaterialCommunityIcons name="compare" size={18} color="#0066CC" /> Comparación
@@ -702,7 +679,6 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {/* Step 7: Materials & Observations */}
           {currentStep === 7 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
@@ -764,7 +740,6 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {/* Step 8: After Photo */}
           {currentStep === 8 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
@@ -823,7 +798,6 @@ export default function UnifiedNewReportScreen() {
                 </View>
               </View>
 
-              {/* Final Summary */}
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryTitle}>Resumen del Reporte</Text>
                 <View style={styles.summaryRow}>
@@ -846,7 +820,6 @@ export default function UnifiedNewReportScreen() {
           )}
         </View>
 
-        {/* Navigation Buttons */}
         <View style={styles.navigationButtons}>
           {currentStep > 1 && (
             <TouchableOpacity 

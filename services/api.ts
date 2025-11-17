@@ -6,15 +6,6 @@ import {
   USE_CLOUDFLARE_TUNNEL
 } from '@env';
 
-// Debug: Verificar que se están cargando las variables de entorno
-console.log('🔍 Variables de entorno cargadas:', {
-  API_BASE_PATH,
-  DEBUG_API,
-  CLOUDFLARE_TUNNEL_URL,
-  USE_CLOUDFLARE_TUNNEL
-});
-
-// Configuración simplificada solo para Cloudflare
 const ENV_CONFIG = {
   apiBasePath: API_BASE_PATH || '/api',
   useCloudflare: USE_CLOUDFLARE_TUNNEL === 'true',
@@ -22,56 +13,26 @@ const ENV_CONFIG = {
   debugApi: DEBUG_API === 'true'
 };
 
-console.log('⚙️ ENV_CONFIG final (Solo Cloudflare):', ENV_CONFIG);
-
-// Función simplificada para obtener la URL base del API
 const getApiBaseUrl = () => {
   if (!ENV_CONFIG.cloudflareUrl) {
     throw new Error('CLOUDFLARE_TUNNEL_URL no está configurado en .env');
   }
 
-  const cloudflareApiUrl = `${ENV_CONFIG.cloudflareUrl}${ENV_CONFIG.apiBasePath}`;
-  
-  if (ENV_CONFIG.debugApi) {
-    console.log('🌐 Usando Cloudflare Tunnel:', {
-      cloudflareUrl: ENV_CONFIG.cloudflareUrl,
-      fullUrl: cloudflareApiUrl
-    });
-  }
-  
-  return cloudflareApiUrl;
+  return `${ENV_CONFIG.cloudflareUrl}${ENV_CONFIG.apiBasePath}`;
 };
 
 const API_BASE_URL = getApiBaseUrl();
 
-// Función para obtener la URL completa de una imagen
 export const getImageUrl = (relativePath: string | null | undefined): string | null => {
   if (!relativePath) return null;
   
-  // Si ya es una URL completa (como las del backend nuevo), devolverla tal cual
   if (relativePath.startsWith('http://') || relativePath.startsWith('https://')) {
     return relativePath;
   }
   
-  // Si viene como ruta relativa (formato antiguo /uploads/images/...)
-  // Construir la URL completa usando el Cloudflare Tunnel base
-  const baseUrl = ENV_CONFIG.cloudflareUrl; // https://prep-closure-consolidated-save.trycloudflare.com
-  
-  // Asegurarse de que la ruta comience con /
+  const baseUrl = ENV_CONFIG.cloudflareUrl;
   const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
-  
-  // Construir URL completa: https://prep-closure-consolidated-save.trycloudflare.com/uploads/images/...
-  const fullUrl = `${baseUrl}${path}`;
-  
-  if (ENV_CONFIG.debugApi) {
-    console.log('🖼️ Image URL constructed:', {
-      original: relativePath,
-      baseUrl: baseUrl,
-      fullUrl: fullUrl
-    });
-  }
-  
-  return fullUrl;
+  return `${baseUrl}${path}`;
 };
 
 interface LoginCredentials {
@@ -87,7 +48,6 @@ interface LoginResponse {
 class ApiService {
   private currentApiUrl: string = getApiBaseUrl();
 
-  // Getter para obtener la URL actual del API
   get apiUrl(): string {
     return this.currentApiUrl;
   }
@@ -95,10 +55,6 @@ class ApiService {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     try {
       const url = `${this.currentApiUrl}${endpoint}`;
-      
-      if (ENV_CONFIG.debugApi) {
-        console.log('🌐 API Request:', url);
-      }
       
       const response = await fetch(url, {
         headers: {
@@ -112,7 +68,9 @@ class ApiService {
         let errorText = '';
         try {
           errorText = await response.text();
-          console.error('❌ Server error response:', errorText);
+          if (ENV_CONFIG.debugApi) {
+            console.error('Server error response:', errorText);
+          }
         } catch (e) {
           errorText = 'Could not read error response';
         }
@@ -122,7 +80,9 @@ class ApiService {
       const data = await response.json();
       return data;
     } catch (error) {
-      console.error('❌ API request failed:', error);
+      if (ENV_CONFIG.debugApi) {
+        console.error('API request failed:', error);
+      }
       
       if (error instanceof Error && error.message?.includes('Network request failed')) {
         throw new Error('No se puede conectar al servidor Cloudflare. Verifica que el tunnel esté activo.');
@@ -132,11 +92,10 @@ class ApiService {
     }
   }
 
-  // Health check
   async checkServerHealth(): Promise<{ success: boolean; code: string; message: string }> {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
 
       const response = await fetch(`${this.currentApiUrl}/health`, {
         method: 'GET',
@@ -187,7 +146,6 @@ class ApiService {
     }
   }
 
-  // Auth
   async login(credentials: LoginCredentials): Promise<LoginResponse> {
     return this.request<LoginResponse>('/auth/login', {
       method: 'POST',
@@ -195,7 +153,6 @@ class ApiService {
     });
   }
 
-  // Reports
   async createReport(report: Report, token: string): Promise<Report> {
     return this.request<Report>('/reports', {
       method: 'POST',
@@ -215,21 +172,17 @@ class ApiService {
     });
   }
 
-  // Upload image to AWS S3
   async uploadImage(imageUri: string, token: string, reportId?: string): Promise<{ url: string; key: string }> {
     try {
-      // Verificar que la URI de la imagen es válida
       if (!imageUri || !imageUri.startsWith('file://')) {
         throw new Error('Invalid image URI provided');
       }
       
       const formData = new FormData();
       
-      // Generate unique filename with timestamp and report info
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const filename = `${reportId || 'temp'}_${timestamp}.jpg`;
       
-      // Create file object for React Native - asegurar formato correcto
       const fileObject = {
         uri: imageUri,
         type: 'image/jpeg',
@@ -243,7 +196,6 @@ class ApiService {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,
-          // Permitir que el browser configure el Content-Type automáticamente
         },
         body: formData,
       });
@@ -257,7 +209,9 @@ class ApiService {
           errorDetails = await response.text();
         }
         
-        console.error('❌ Upload failed with status:', response.status, 'Error:', errorDetails);
+        if (ENV_CONFIG.debugApi) {
+          console.error('Upload failed:', response.status, errorDetails);
+        }
         throw new Error(`Upload failed (${response.status}): ${errorDetails}`);
       }
       
@@ -273,20 +227,20 @@ class ApiService {
       };
       
     } catch (error: any) {
-      console.error('❌ Upload image error:', error);
+      if (ENV_CONFIG.debugApi) {
+        console.error('Upload image error:', error);
+      }
       
-      // Proporcionar mensaje más descriptivo
       if (error?.message?.includes('Network request failed')) {
         throw new Error('No se pudo conectar al servidor. Verifica tu conexión.');
       } else if (error?.message?.includes('Upload failed')) {
-        throw error; // Re-throw para mantener el mensaje específico
+        throw error;
       } else {
         throw new Error(`Error de subida: ${error?.message || 'Error desconocido'}`);
       }
     }
   }
 
-  // Upload image from base64 data (alternative method)
   async uploadBase64Image(base64Data: string, filename: string, token: string): Promise<{ url: string; key: string }> {
     return this.request<{ file: { url: string; key: string } }>('/upload/base64', {
       method: 'POST',
@@ -305,7 +259,6 @@ class ApiService {
     }));
   }
 
-  // Get presigned URL for direct S3 upload (alternative method)
   async getPresignedUrl(filename: string, token: string): Promise<{ uploadUrl: string; imageUrl: string; key: string }> {
     return this.request<{ uploadUrl: string; imageUrl: string; key: string }>('/upload/presigned', {
       method: 'POST',
@@ -316,7 +269,6 @@ class ApiService {
     });
   }
 
-  // User Statistics
   async getUserStats(token: string): Promise<{
     totalReports: number;
     todayReports: number;
@@ -334,7 +286,6 @@ class ApiService {
     });
   }
 
-  // User Report History
   async getUserReports(token: string, page: number = 1, limit: number = 10): Promise<{
     reports: any[];
     totalPages: number;
@@ -349,7 +300,6 @@ class ApiService {
     });
   }
 
-  // Get specific user report by ID
   async getUserReport(reportId: number, token: string): Promise<any> {
     return this.request(`/reports/my/${reportId}`, {
       method: 'GET',
@@ -359,7 +309,6 @@ class ApiService {
     });
   }
 
-  // Products API methods
   async getProducts(token: string): Promise<any> {
     return this.request('/products/all', {
       method: 'GET',
@@ -387,7 +336,6 @@ class ApiService {
     });
   }
 
-  // Generic HTTP methods
   async get<T>(endpoint: string, token?: string): Promise<T> {
     return this.request<T>(endpoint, {
       method: 'GET',
@@ -438,7 +386,6 @@ class ApiService {
     });
   }
 
-  // Orders API methods
   async createOrder(orderData: any, token?: string): Promise<any> {
     return this.post('/orders', orderData, token);
   }
@@ -451,7 +398,6 @@ class ApiService {
     return this.get(`/orders/${orderId}`, token);
   }
 
-  // Test endpoint
   async testEndpoint(data: any): Promise<any> {
     return this.post('/test/test', data);
   }
@@ -465,7 +411,6 @@ class ApiService {
     });
   }
 
-  // Get app version from backend
   async getAppVersion(): Promise<{
     success: boolean;
     version: string;

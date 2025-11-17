@@ -24,8 +24,8 @@ export interface CreateOrderRequest {
   }[];
   notes?: string;
   delivery_address?: string;
-  user_id?: string; // ✅ ID del usuario que crea la orden
-  technician_name?: string; // ✅ Nombre del técnico para guardar en la base de datos
+  user_id?: string;
+  technician_name?: string; 
 }
 
 interface CartState {
@@ -46,21 +46,19 @@ const initialState: CartState = {
   error: null,
 };
 
-// Async thunk para crear pedido
 export const createOrder = createAsyncThunk(
   'cart/createOrder',
   async (orderData: CreateOrderRequest, { rejectWithValue, getState }) => {
     try {
       const state = getState() as any;
       const token = state.auth.token;
-      const userId = state.auth.user?.id; // ✅ Obtener el ID del usuario
-      const technicianName = state.auth.user?.name; // ✅ Obtener el nombre del técnico
+      const userId = state.auth.user?.id; 
+      const technicianName = state.auth.user?.name; 
       
-      // Incluir user_id y technician_name en los datos de la orden
       const orderDataWithUser = {
         ...orderData,
-        user_id: userId, // ✅ Agregar el ID del usuario
-        technician_name: technicianName, // ✅ Agregar el nombre del técnico
+        user_id: userId, 
+        technician_name: technicianName, 
       };
       
       const response = await ApiService.createOrder(orderDataWithUser, token || undefined);
@@ -85,18 +83,14 @@ const cartSlice = createSlice({
     }>) => {
       const { productId, productName, variantId, variantName, quantity = 1, unitPrice = 0 } = action.payload;
       
-      // Crear ID único para el item (producto + variante)
       const itemId = variantId ? `${productId}-${variantId}` : `${productId}`;
       
-      // Buscar si el item ya existe
       const existingItem = state.items.find(item => item.id === itemId);
       
       if (existingItem) {
-        // Si existe, incrementar cantidad
         existingItem.quantity += quantity;
         existingItem.totalPrice = existingItem.quantity * existingItem.unitPrice;
       } else {
-        // Si no existe, agregar nuevo item
         const newItem: CartItem = {
           id: itemId,
           productId,
@@ -110,7 +104,6 @@ const cartSlice = createSlice({
         state.items.push(newItem);
       }
       
-      // Recalcular totales
       cartSlice.caseReducers.calculateTotals(state);
     },
 
@@ -126,10 +119,8 @@ const cartSlice = createSlice({
       
       if (item) {
         if (quantity <= 0) {
-          // Si cantidad es 0 o menor, remover item
           state.items = state.items.filter(item => item.id !== itemId);
         } else {
-          // Actualizar cantidad y total
           item.quantity = quantity;
           item.totalPrice = item.quantity * item.unitPrice;
         }
@@ -162,7 +153,6 @@ const cartSlice = createSlice({
       .addCase(createOrder.fulfilled, (state, action) => {
         state.isSubmitting = false;
         state.lastOrderNumber = action.payload.order_number;
-        // Limpiar carrito después de crear pedido exitosamente
         state.items = [];
         state.totalItems = 0;
         state.totalAmount = 0;

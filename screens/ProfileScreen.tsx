@@ -38,7 +38,6 @@ export default function ProfileScreen() {
       setName(user.name);
       setEmail(user.email);
     }
-    // Cargar versión del backend
     loadAppVersion();
   }, [user]);
 
@@ -50,7 +49,7 @@ export default function ProfileScreen() {
       }
     } catch (error) {
       console.error('Error loading version:', error);
-      setAppVersion('1.0.0'); // Fallback version
+      setAppVersion('1.0.0'); 
     }
   };
 
@@ -69,7 +68,6 @@ export default function ProfileScreen() {
     try {
       const response = await ApiService.put('/auth/profile', { name, email }, token);
       
-      // Actualizar el estado global con los nuevos datos
       dispatch(updateUserProfile({ name, email }));
       
       Alert.alert('Éxito', 'Perfil actualizado correctamente');
@@ -131,7 +129,6 @@ export default function ProfileScreen() {
       />
 
       <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        {/* Profile Section */}
         <View style={styles.section}>
           <View style={styles.avatarContainer}>
             <View style={styles.avatar}>
@@ -200,7 +197,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Help & Support Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Ayuda y Soporte</Text>
           
@@ -247,7 +243,6 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* About App Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Acerca de la App</Text>
           
@@ -276,7 +271,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {/* Logout Button */}
         <View style={styles.section}>
           <TouchableOpacity style={styles.updateButton} onPress={handleCheckUpdates}>
             <Ionicons name="refresh-outline" size={24} color="#0066CC" />

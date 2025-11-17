@@ -17,7 +17,6 @@ import Colors from '../constants/colors';
 
 type NavigationProp = StackNavigationProp<any>;
 
-// Step Components
 import StepBasicInfo from '../components/report-steps/StepBasicInfo';
 import StepPhotoBefore from '../components/report-steps/StepPhotoBefore';
 import StepParametersBefore from '../components/report-steps/StepParametersBefore';
@@ -83,12 +82,10 @@ export default function NewReportScreen() {
               dispatch(setLoading(true));
               dispatch(setError(null));
 
-              // Preparar el reporte completo para envío
               const reportToSend = {
                 ...currentReport,
                 userId: user?.id || 'unknown',
                 exitTime: new Date().toISOString(),
-                // Asegurar que todos los campos requeridos están presentes
                 parametersBefore: currentReport.parametersBefore || {
                   cl: 0, ph: 0, alk: 0, stabilizer: 0, hardness: 0, salt: 0, temperature: 0
                 },
@@ -113,13 +110,11 @@ export default function NewReportScreen() {
                 technician: currentReport.technician || user?.name || 'Técnico',
               };
 
-              // Guardar en la base de datos AWS
               const savedReport = await ApiService.createReport(
                 reportToSend as any,
                 token || ''
               );
               
-              // Finalizar en Redux
               dispatch(finishReport());
               
               Alert.alert(
@@ -189,7 +184,6 @@ export default function NewReportScreen() {
       />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Progress Indicator */}
         <View style={styles.progressContainer}>
           <View style={styles.progressBar}>
             <View

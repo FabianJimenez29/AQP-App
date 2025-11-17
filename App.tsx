@@ -6,15 +6,14 @@ import { StatusBar } from 'expo-status-bar';
 import { store } from './store';
 import updateService from './services/updateService';
 
-// Import screens
 import LoginScreen from './screens/LoginScreen';
 import DashboardScreen from './screens/DashboardScreen';
 import NewReportScreen from './screens/NewReportScreen';
 import UnifiedNewReportScreen from './screens/UnifiedNewReportScreen';
 import ReportHistoryScreen from './screens/ReportHistoryScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import ProductsScreen from './DISABLED_app-old-routes/products';
-import CartScreen from './DISABLED_app-old-routes/cart';
+import ProductsScreen from './screens/ProductsScreen';
+import CartScreen from './screens/CartScreen';
 
 const Stack = createStackNavigator();
 
@@ -22,10 +21,7 @@ function AppContent() {
   const navigationRef = useRef<any>(null);
 
   useEffect(() => {
-    // Iniciar verificación automática de actualizaciones cada 30 minutos
     updateService.startAutoCheck(30);
-
-    // Cleanup
     return () => {
       updateService.stopAutoCheck();
     };

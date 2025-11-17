@@ -25,11 +25,9 @@ const ServerConfig: React.FC<ServerConfigProps> = ({ visible, onClose }) => {
     try {
       const savedCloudflareUrl = await AsyncStorage.getItem('cloudflare_url');
       
-      // Usar valor guardado o valor por defecto del .env
       setCloudflareUrl(savedCloudflareUrl || CLOUDFLARE_TUNNEL_URL || '');
     } catch (error) {
       console.error('Error cargando configuración:', error);
-      // Usar valor por defecto del .env en caso de error
       setCloudflareUrl(CLOUDFLARE_TUNNEL_URL || '');
     }
   };

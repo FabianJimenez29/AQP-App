@@ -5,7 +5,6 @@ const config = getDefaultConfig(__dirname);
 
 config.resolver.sourceExts = [...config.resolver.sourceExts, 'mjs'];
 
-// Deshabilitar transformaciones problemáticas
 config.transformer = {
   ...config.transformer,
   getTransformOptions: async () => ({

@@ -24,7 +24,6 @@ import { RootState } from '../store';
 
 type NavigationProp = StackNavigationProp<any>;
 
-// Datos de ejemplo para mostrar el diseño
 const sampleProducts: Product[] = [
   {
     id: 1,
@@ -119,7 +118,6 @@ export default function ProductsScreen() {
 
     try {
       if (token) {
-        // Cargar productos
         const productsResponse = await ApiService.getProducts(token);
         
         if (productsResponse && productsResponse.success && productsResponse.products) {
@@ -128,7 +126,6 @@ export default function ProductsScreen() {
           setProducts(sampleProducts);
         }
         
-        // Cargar categorías
         const categoriesResponse = await ApiService.getProductCategories(token);
         
         if (categoriesResponse && categoriesResponse.success && categoriesResponse.categories) {
@@ -144,14 +141,12 @@ export default function ProductsScreen() {
         setCategories(sampleCategories);
       }
       
-      // Siempre agregar algunos productos de ejemplo para mostrar la interfaz
       if (products.length === 0) {
         setProducts(prevProducts => 
           prevProducts.length === 0 ? sampleProducts : prevProducts
         );
       }
     } catch (error) {
-      console.error('❌ Error loading products:', error);
       Alert.alert(
         'Error de conexión', 
         'No se pudieron cargar los productos de la base de datos. Mostrando productos de ejemplo.',
@@ -170,8 +165,6 @@ export default function ProductsScreen() {
     : products.filter(product => 
         String(product.category).toLowerCase() === selectedCategory.toLowerCase()
       );
-
-
 
   const renderCategoryButton = ({ item }: { item: string }) => (
     <TouchableOpacity
@@ -207,7 +200,6 @@ export default function ProductsScreen() {
           />
         }
       >
-        {/* Cart Summary */}
         {cartItems.length > 0 && (
           <View style={styles.cartSummary}>
             <View style={styles.cartInfo}>
@@ -225,7 +217,6 @@ export default function ProductsScreen() {
           </View>
         )}
 
-        {/* Categories Section */}
         <View style={styles.categoriesSection}>
           <Text style={styles.sectionTitle}>Categorías</Text>
           <FlatList
@@ -238,7 +229,6 @@ export default function ProductsScreen() {
           />
         </View>
 
-        {/* Products Section */}
         <View style={styles.productsSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>
@@ -261,9 +251,7 @@ export default function ProductsScreen() {
             <View style={styles.productsGrid}>
               {filteredProducts.map((product) => (
                 <View key={product.id} style={styles.productWrapper}>
-                  <ProductCard
-                    product={product}
-                  />
+                  <ProductCard product={product} />
                 </View>
               ))}
             </View>
