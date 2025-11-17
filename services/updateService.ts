@@ -11,7 +11,7 @@ interface UpdateInfo {
 }
 
 class UpdateService {
-  private currentVersion = '1.0.2'; // Debe coincidir con app.json
+  private currentVersion = '1.0.3'; // Debe coincidir con app.json
   private checkInterval: NodeJS.Timeout | null = null;
   private isUpdating = false;
 
