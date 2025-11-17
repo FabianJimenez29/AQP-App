@@ -9,6 +9,7 @@ import {
   Image,
   Modal,
   Alert,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -219,6 +220,80 @@ export default function ReportHistoryScreen() {
   // Function to get the complete image URL
   const getCompleteImageUrl = (url: string | undefined): string | null => {
     return getImageUrl(url);
+  };
+
+  const sendReportViaWhatsApp = (report: Report) => {
+    // Formatear el mensaje del reporte
+    let message = `*🏊 REPORTE DE MANTENIMIENTO DE PISCINA*\n\n`;
+    message += `*Número de Reporte:* ${report.report_number}\n`;
+    message += `*Cliente:* ${report.client_name}\n`;
+    message += `*Ubicación:* ${report.location}\n`;
+    message += `*Técnico:* ${report.technician}\n`;
+    message += `*Fecha:* ${formatDate(report.created_at)}\n\n`;
+
+    // Parámetros Antes
+    if (report.parameters_before) {
+      message += `*📊 PARÁMETROS ANTES DEL MANTENIMIENTO*\n`;
+      message += `• Cloro Libre: ${report.parameters_before.cl} ppm\n`;
+      message += `• pH: ${report.parameters_before.ph}\n`;
+      message += `• Alcalinidad: ${report.parameters_before.alk} ppm\n`;
+      message += `• Estabilizador: ${report.parameters_before.stabilizer} ppm\n`;
+      message += `• Dureza: ${report.parameters_before.hardness} ppm\n`;
+      message += `• Sal: ${report.parameters_before.salt} ppm\n`;
+      message += `• Temperatura: ${report.parameters_before.temperature} °C\n\n`;
+    }
+
+    // Químicos Utilizados
+    if (report.chemicals) {
+      const chemicalsUsed = [];
+      if (report.chemicals.tricloro > 0) chemicalsUsed.push(`• Tricloro: ${report.chemicals.tricloro} kg`);
+      if (report.chemicals.tabletas > 0) chemicalsUsed.push(`• Tabletas: ${report.chemicals.tabletas} unidades`);
+      if (report.chemicals.acido > 0) chemicalsUsed.push(`• Ácido: ${report.chemicals.acido} L`);
+      if (report.chemicals.soda > 0) chemicalsUsed.push(`• Soda: ${report.chemicals.soda} kg`);
+      if (report.chemicals.bicarbonato > 0) chemicalsUsed.push(`• Bicarbonato: ${report.chemicals.bicarbonato} kg`);
+      if (report.chemicals.sal > 0) chemicalsUsed.push(`• Sal: ${report.chemicals.sal} kg`);
+      if (report.chemicals.alguicida > 0) chemicalsUsed.push(`• Alguicida: ${report.chemicals.alguicida} L`);
+      if (report.chemicals.clarificador > 0) chemicalsUsed.push(`• Clarificador: ${report.chemicals.clarificador} L`);
+      if (report.chemicals.cloro_liquido > 0) chemicalsUsed.push(`• Cloro Líquido: ${report.chemicals.cloro_liquido} L`);
+      
+      if (chemicalsUsed.length > 0) {
+        message += `*🧪 QUÍMICOS UTILIZADOS*\n${chemicalsUsed.join('\n')}\n\n`;
+      }
+    }
+
+    // Parámetros Después
+    if (report.parameters_after) {
+      message += `*📈 PARÁMETROS DESPUÉS DEL MANTENIMIENTO*\n`;
+      message += `• Cloro Libre: ${report.parameters_after.cl} ppm\n`;
+      message += `• pH: ${report.parameters_after.ph}\n`;
+      message += `• Alcalinidad: ${report.parameters_after.alk} ppm\n`;
+      message += `• Estabilizador: ${report.parameters_after.stabilizer} ppm\n`;
+      message += `• Dureza: ${report.parameters_after.hardness} ppm\n`;
+      message += `• Sal: ${report.parameters_after.salt} ppm\n`;
+      message += `• Temperatura: ${report.parameters_after.temperature} °C\n\n`;
+    }
+
+    // Información Adicional
+    if (report.materials_delivered) {
+      message += `*📦 Materiales Entregados:* ${report.materials_delivered}\n`;
+    }
+    if (report.observations) {
+      message += `*📝 Observaciones:* ${report.observations}\n`;
+    }
+    if (report.received_by) {
+      message += `*✍️ Recibido por:* ${report.received_by}\n`;
+    }
+
+    message += `\n_Reporte generado por AquaPool App_`;
+
+    // Codificar el mensaje para URL
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+
+    // Abrir WhatsApp
+    Linking.openURL(whatsappUrl).catch(() => {
+      Alert.alert('Error', 'No se pudo abrir WhatsApp. Asegúrate de tener WhatsApp instalado.');
+    });
   };
 
   return (
@@ -524,7 +599,12 @@ export default function ReportHistoryScreen() {
                 <Ionicons name="close" size={24} color="white" />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Detalle del Reporte</Text>
-              <View style={styles.placeholder} />
+              <TouchableOpacity 
+                onPress={() => sendReportViaWhatsApp(selectedReport)} 
+                style={styles.whatsappButton}
+              >
+                <Ionicons name="logo-whatsapp" size={24} color="white" />
+              </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalContent}>
@@ -874,6 +954,14 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  whatsappButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#25D366',
     justifyContent: 'center',
     alignItems: 'center',
   },
