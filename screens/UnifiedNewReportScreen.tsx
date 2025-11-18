@@ -360,14 +360,13 @@ export default function UnifiedNewReportScreen() {
               { num: 7, icon: 'clipboard', label: 'Notas' },
               { num: 8, icon: 'camera', label: 'Después' },
             ].map((step) => (
-              <TouchableOpacity
+              <View
                 key={step.num}
                 style={[
                   styles.stepIndicator,
                   currentStep === step.num && styles.stepIndicatorActive,
                   currentStep > step.num && styles.stepIndicatorCompleted,
                 ]}
-                onPress={() => setCurrentStep(step.num)}
               >
                 <View style={[
                   styles.stepIcon,
@@ -386,7 +385,7 @@ export default function UnifiedNewReportScreen() {
                 ]}>
                   {step.label}
                 </Text>
-              </TouchableOpacity>
+              </View>
             ))}
           </View>
         </View>

@@ -218,7 +218,70 @@ export default function ReportHistoryScreen() {
     return getImageUrl(url);
   };
 
-  const sendReportViaWhatsApp = (report: Report) => {
+  const sendReportViaWhatsApp = async (report: Report) => {
+    try {
+      if (!token) {
+        Alert.alert('Error', 'No estás autenticado');
+        return;
+      }
+
+      Alert.alert(
+        'Compartir Reporte',
+        '¿Cómo deseas compartir el reporte?',
+        [
+          {
+            text: 'Como PDF',
+            onPress: async () => {
+              try {
+                // Descargar el PDF del reporte
+                const pdfUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf`;
+                const response = await fetch(pdfUrl, {
+                  headers: {
+                    'Authorization': `Bearer ${token}`
+                  }
+                });
+
+                if (!response.ok) {
+                  throw new Error('Error al generar el PDF');
+                }
+
+                const blob = await response.blob();
+                const fileReaderInstance = new FileReader();
+                fileReaderInstance.readAsDataURL(blob);
+                fileReaderInstance.onload = () => {
+                  const base64data = fileReaderInstance.result;
+                  
+                  // Compartir el PDF por WhatsApp (en dispositivos móviles esto abrirá WhatsApp)
+                  const message = `*Reporte ${report.report_number}*\n${report.client_name} - ${report.location}`;
+                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+                  
+                  Linking.openURL(whatsappUrl).catch(() => {
+                    Alert.alert('Error', 'No se pudo abrir WhatsApp. Por favor, descarga el PDF manualmente.');
+                  });
+                };
+              } catch (error) {
+                console.error('Error al compartir PDF:', error);
+                Alert.alert('Error', 'No se pudo generar el PDF del reporte');
+              }
+            }
+          },
+          {
+            text: 'Como Texto',
+            onPress: () => sendReportAsText(report)
+          },
+          {
+            text: 'Cancelar',
+            style: 'cancel'
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert('Error', 'Ocurrió un error al compartir el reporte');
+    }
+  };
+
+  const sendReportAsText = (report: Report) => {
     let message = `*🏊 REPORTE DE MANTENIMIENTO DE PISCINA*\n\n`;
     message += `*Número de Reporte:* ${report.report_number}\n`;
     message += `*Cliente:* ${report.client_name}\n`;

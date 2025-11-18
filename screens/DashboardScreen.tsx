@@ -98,12 +98,6 @@ export default function DashboardScreen() {
             />
           </View>
           <View style={styles.headerActions}>
-            <TouchableOpacity style={styles.notificationButton}>
-              <Ionicons name="notifications-outline" size={24} color="#1a1a1a" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationBadgeText}>3</Text>
-              </View>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.profileButton} onPress={handleProfile}>
               <View style={styles.profileAvatar}>
                 <Text style={styles.profileInitial}>
@@ -339,33 +333,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-  },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#f5f7fa',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  notificationBadge: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    backgroundColor: '#f44336',
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'white',
-  },
-  notificationBadgeText: {
-    color: 'white',
-    fontSize: 10,
-    fontWeight: '700',
   },
   profileButton: {
     width: 40,

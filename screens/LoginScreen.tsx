@@ -238,42 +238,10 @@ export default function LoginScreen() {
               </View>
             )}
           </TouchableOpacity>
-
-          <View style={styles.quickLoginContainer}>
-            <View style={styles.dividerContainer}>
-              <View style={styles.divider} />
-              <Text style={styles.quickLoginTitle}>Acceso Rápido</Text>
-              <View style={styles.divider} />
-            </View>
-            
-            <View style={styles.quickLoginButtons}>
-              <TouchableOpacity 
-                style={styles.quickLoginButton}
-                onPress={() => {
-                  setEmail('tech@aquapool.com');
-                  setPassword('tech123');
-                }}
-              >
-                <Ionicons name="person" size={18} color="#0066CC" style={styles.quickLoginIcon} />
-                <Text style={styles.quickLoginButtonText}>Técnico</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.quickLoginButton, styles.adminButton]}
-                onPress={() => {
-                  setEmail('admin@aquapool.com');
-                  setPassword('admin123');
-                }}
-              >
-                <Ionicons name="shield-checkmark" size={18} color="#FF6B00" style={styles.quickLoginIcon} />
-                <Text style={[styles.quickLoginButtonText, styles.adminButtonText]}>Admin</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         </View>
         
         <View style={styles.footer}>
-          <Text style={styles.footerText}>AQUAPOOL © 2024</Text>
+          <Text style={styles.footerText}>AQUAPOOL © 2025</Text>
           <Text style={styles.footerSubtext}>Sistema de Gestión de Mantenimiento</Text>
         </View>
       </ScrollView>
@@ -410,57 +378,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-  },
-  quickLoginContainer: {
-    marginTop: 25,
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#e0e0e0',
-  },
-  quickLoginTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#999',
-    paddingHorizontal: 10,
-  },
-  quickLoginButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  quickLoginButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#EBF5FF',
-    paddingVertical: 12,
-    paddingHorizontal: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#0066CC',
-  },
-  adminButton: {
-    backgroundColor: '#FFF4E6',
-    borderColor: '#FF6B00',
-  },
-  quickLoginIcon: {
-    marginRight: 6,
-  },
-  quickLoginButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#0066CC',
-  },
-  adminButtonText: {
-    color: '#FF6B00',
   },
   footer: {
     alignItems: 'center',
