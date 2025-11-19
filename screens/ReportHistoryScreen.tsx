@@ -10,7 +10,10 @@ import {
   Modal,
   Alert,
   Linking,
+  Platform,
 } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
@@ -233,35 +236,54 @@ export default function ReportHistoryScreen() {
             text: 'Como PDF',
             onPress: async () => {
               try {
+                Alert.alert('Generando PDF', 'Por favor espera...');
+                
                 // Descargar el PDF del reporte
                 const pdfUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf`;
-                const response = await fetch(pdfUrl, {
-                  headers: {
-                    'Authorization': `Bearer ${token}`
-                  }
-                });
+                const fileName = `reporte_${report.report_number}.pdf`;
+                const fileUri = FileSystem.documentDirectory + fileName;
 
-                if (!response.ok) {
-                  throw new Error('Error al generar el PDF');
+                const downloadResult = await FileSystem.downloadAsync(
+                  pdfUrl,
+                  fileUri,
+                  {
+                    headers: {
+                      'Authorization': `Bearer ${token}`
+                    }
+                  }
+                );
+
+                if (downloadResult.status !== 200) {
+                  throw new Error('Error al descargar el PDF');
                 }
 
-                const blob = await response.blob();
-                const fileReaderInstance = new FileReader();
-                fileReaderInstance.readAsDataURL(blob);
-                fileReaderInstance.onload = () => {
-                  const base64data = fileReaderInstance.result;
-                  
-                  // Compartir el PDF por WhatsApp (en dispositivos móviles esto abrirá WhatsApp)
-                  const message = `*Reporte ${report.report_number}*\n${report.client_name} - ${report.location}`;
-                  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-                  
-                  Linking.openURL(whatsappUrl).catch(() => {
-                    Alert.alert('Error', 'No se pudo abrir WhatsApp. Por favor, descarga el PDF manualmente.');
+                // Verificar si se puede compartir
+                const canShare = await Sharing.isAvailableAsync();
+                if (canShare) {
+                  // Compartir el PDF usando el sistema nativo
+                  await Sharing.shareAsync(downloadResult.uri, {
+                    mimeType: 'application/pdf',
+                    dialogTitle: `Compartir Reporte ${report.report_number}`,
+                    UTI: 'com.adobe.pdf'
                   });
-                };
+                } else {
+                  // Fallback: abrir con el visor del sistema
+                  if (Platform.OS === 'android') {
+                    const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
+                    await Linking.openURL(contentUri);
+                  } else {
+                    await Linking.openURL(downloadResult.uri);
+                  }
+                  
+                  Alert.alert(
+                    'PDF Generado', 
+                    'El PDF ha sido generado. Ahora puedes compartirlo por WhatsApp desde el visor de archivos.'
+                  );
+                }
+                
               } catch (error) {
                 console.error('Error al compartir PDF:', error);
-                Alert.alert('Error', 'No se pudo generar el PDF del reporte');
+                Alert.alert('Error', 'No se pudo generar el PDF del reporte. Intenta compartir como texto.');
               }
             }
           },
