@@ -47,6 +47,11 @@ export interface EquipmentCheck {
 export interface Report {
   id?: string;
   reportNumber: string;
+  projectId?: string;
+  projectName?: string;
+  projectClientEmail?: string;
+  projectClientPhone?: string;
+  projectPoolGallons?: number;
   clientName: string;
   location: string;
   entryTime: string; 

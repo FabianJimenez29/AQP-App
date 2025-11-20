@@ -419,6 +419,26 @@ class ApiService {
   }> {
     return this.get('/version');
   }
+
+  // Projects Methods
+  async getAllProjects(token: string): Promise<any[]> {
+    const response: any = await this.request('/projects', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.projects || [];
+  }
+
+  async getProjectById(projectId: string, token: string): Promise<any> {
+    return this.request(`/projects/${projectId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+  }
 }
 
 export default new ApiService();

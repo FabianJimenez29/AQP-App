@@ -9,6 +9,7 @@ import {
   Alert,
   Image,
   Animated,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -32,19 +33,25 @@ export default function UnifiedNewReportScreen() {
   const insets = useSafeAreaInsets();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 8;
+  const totalSteps = 6; // Reducido de 8 a 6 (eliminamos step 4 y 6)
+
+  // Projects state
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProject, setSelectedProject] = useState<any>(null);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(true);
+  const [showProjectPicker, setShowProjectPicker] = useState(false);
 
   const [clientName, setClientName] = useState('');
   const [location, setLocation] = useState('');
   const [beforePhoto, setBeforePhoto] = useState<string | null>(null);
   const [afterPhoto, setAfterPhoto] = useState<string | null>(null);
-  const [showParametersAfter, setShowParametersAfter] = useState(false);
   
-  const [parametersBefore, setParametersBefore] = useState<Parameters>({
-    cl: 0, ph: 0, alk: 0, stabilizer: 0, hardness: 0, salt: 0, temperature: 0
+  // Usar strings para permitir la entrada de decimales mientras se escribe
+  const [parametersBeforeStr, setParametersBeforeStr] = useState<Record<string, string>>({
+    cl: '', ph: '', alk: '', stabilizer: '', hardness: '', salt: '', temperature: ''
   });
   
-  const [parametersAfter, setParametersAfter] = useState<Parameters>({
+  const [parametersBefore, setParametersBefore] = useState<Parameters>({
     cl: 0, ph: 0, alk: 0, stabilizer: 0, hardness: 0, salt: 0, temperature: 0
   });
 
@@ -65,12 +72,25 @@ export default function UnifiedNewReportScreen() {
   const [observations, setObservations] = useState('');
   const [receivedBy, setReceivedBy] = useState('');
 
+  // Load projects on mount
   useEffect(() => {
-    const allParametersBeforeFilled = Object.values(parametersBefore).every(value => value > 0);
-    if (allParametersBeforeFilled && !showParametersAfter) {
-      setShowParametersAfter(true);
-    }
-  }, [parametersBefore, showParametersAfter]);
+    const loadProjects = async () => {
+      if (!token) return;
+      try {
+        setIsLoadingProjects(true);
+        const projectsData = await ApiService.getAllProjects(token);
+        // Filter only active projects
+        const activeProjects = projectsData.filter((p: any) => p.status === 'active');
+        setProjects(activeProjects);
+      } catch (error) {
+        console.error('Error loading projects:', error);
+        Alert.alert('Error', 'No se pudieron cargar los proyectos');
+      } finally {
+        setIsLoadingProjects(false);
+      }
+    };
+    loadProjects();
+  }, [token]);
 
   const handleImagePicker = async (type: 'before' | 'after') => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -106,12 +126,16 @@ export default function UnifiedNewReportScreen() {
   };
 
   const handleParameterChange = (type: 'before' | 'after', key: keyof Parameters, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    if (type === 'before') {
-      setParametersBefore(prev => ({ ...prev, [key]: numValue }));
-    } else {
-      setParametersAfter(prev => ({ ...prev, [key]: numValue }));
-    }
+    // Permitir decimales y puntos mientras se escribe
+    // Aceptar números, punto decimal y comas
+    const cleanValue = value.replace(',', '.');
+    
+    // Actualizar el valor string para mostrar en el input
+    setParametersBeforeStr(prev => ({ ...prev, [key]: value }));
+    
+    // Convertir a número para el estado numérico (usado en validación y submit)
+    const numValue = parseFloat(cleanValue) || 0;
+    setParametersBefore(prev => ({ ...prev, [key]: numValue }));
   };
 
   const handleChemicalChange = (key: keyof Chemicals, value: string) => {
@@ -124,12 +148,8 @@ export default function UnifiedNewReportScreen() {
   };
 
   const validateForm = () => {
-    if (!clientName.trim()) {
-      Alert.alert('Error', 'El nombre del cliente es obligatorio');
-      return false;
-    }
-    if (!location.trim()) {
-      Alert.alert('Error', 'La ubicación es obligatoria');
+    if (!selectedProject) {
+      Alert.alert('Error', 'Debes seleccionar un proyecto');
       return false;
     }
     if (!beforePhoto) {
@@ -195,8 +215,9 @@ export default function UnifiedNewReportScreen() {
               }
 
               const reportData = {
-                clientName: clientName.trim(),
-                location: location.trim(),
+                projectId: selectedProject.id,
+                clientName: selectedProject.client_name,
+                location: selectedProject.location,
                 technician: user?.name || 'Técnico',
                 entryTime: new Date().toISOString(),
                 exitTime: new Date().toISOString(),
@@ -204,7 +225,6 @@ export default function UnifiedNewReportScreen() {
                 beforePhoto: beforePhotoUrl, 
                 afterPhoto: afterPhotoUrl,  
                 parametersBefore,
-                parametersAfter,
                 chemicals,
                 equipmentCheck,
                 materialsDelivered: materialsDelivered.trim(),
@@ -218,9 +238,22 @@ export default function UnifiedNewReportScreen() {
               dispatch(incrementTodayReports());
               
               Alert.alert(
-                'Éxito',
-                'Reporte enviado correctamente con imágenes subidas a S3. El número de reporte se asignó automáticamente.',
-                [{ text: 'OK', onPress: () => navigation.replace('Dashboard') }]
+                '✅ Reporte Enviado Exitosamente',
+                `El reporte ha sido registrado correctamente.\n\n` +
+                `📋 Proyecto: ${selectedProject.project_name}\n` +
+                `📍 Ubicación: ${selectedProject.location}\n\n` +
+                `El PDF será generado y enviado al cliente automáticamente.`,
+                [
+                  { 
+                    text: 'Ver Reportes', 
+                    onPress: () => navigation.replace('ReportHistory')
+                  },
+                  { 
+                    text: 'Ir al Inicio', 
+                    onPress: () => navigation.replace('Dashboard'),
+                    style: 'cancel'
+                  }
+                ]
               );
 
             } catch (error: any) {
@@ -300,14 +333,12 @@ export default function UnifiedNewReportScreen() {
 
   const canProceedToNextStep = () => {
     switch(currentStep) {
-      case 1: return clientName.trim() && location.trim();
+      case 1: return selectedProject !== null;
       case 2: return beforePhoto !== null;
       case 3: return Object.values(parametersBefore).every(v => v > 0);
-      case 4: return true;
-      case 5: return true; 
-      case 6: return Object.values(parametersAfter).every(v => v > 0);
-      case 7: return true; 
-      case 8: return afterPhoto !== null;
+      case 4: return true; // Químicos (opcional)
+      case 5: return true; // Notas (opcional)
+      case 6: return afterPhoto !== null;
       default: return false;
     }
   };
@@ -351,7 +382,7 @@ export default function UnifiedNewReportScreen() {
         <View style={styles.stepIndicators}>
           <View style={styles.stepIndicatorsContainer}>
             {[
-              { num: 1, icon: 'information-circle', label: 'Info' },
+              { num: 1, icon: 'home', label: 'Proyecto' },
               { num: 2, icon: 'camera', label: 'Antes' },
               { num: 3, icon: 'analytics', label: 'Inicial' },
               { num: 4, icon: 'flask', label: 'Químicos' },
@@ -395,61 +426,107 @@ export default function UnifiedNewReportScreen() {
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
                 <View style={styles.stepIconLarge}>
-                  <Ionicons name="information-circle" size={32} color="#0066CC" />
+                  <Ionicons name="home" size={32} color="#0066CC" />
                 </View>
-                <Text style={styles.stepTitle}>Información Básica</Text>
+                <Text style={styles.stepTitle}>Seleccionar Proyecto</Text>
                 <Text style={styles.stepDescription}>
-                  Ingresa los datos del cliente y la ubicación del servicio
+                  Elige el proyecto al que le darás servicio
                 </Text>
               </View>
 
               <View style={styles.card}>
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>
-                    <Ionicons name="person" size={16} color="#666" /> Cliente *
-                  </Text>
-                  <TextInput
-                    style={styles.input}
-                    value={clientName}
-                    onChangeText={setClientName}
-                    placeholder="Nombre completo del cliente"
-                    placeholderTextColor="#999"
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>
-                    <Ionicons name="location" size={16} color="#666" /> Ubicación *
-                  </Text>
-                  <TextInput
-                    style={styles.input}
-                    value={location}
-                    onChangeText={setLocation}
-                    placeholder="Dirección o ubicación exacta"
-                    placeholderTextColor="#999"
-                    multiline
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>
-                    <Ionicons name="person-circle" size={16} color="#666" /> Técnico Asignado
-                  </Text>
-                  <View style={styles.technicianCard}>
-                    <View style={styles.technicianAvatar}>
-                      <Text style={styles.technicianInitial}>
-                        {user?.name?.charAt(0).toUpperCase() || 'T'}
-                      </Text>
-                    </View>
-                    <View style={styles.technicianInfo}>
-                      <Text style={styles.technicianName}>{user?.name || 'Técnico'}</Text>
-                      <Text style={styles.technicianRole}>Técnico de mantenimiento</Text>
-                    </View>
-                    <View style={styles.technicianBadge}>
-                      <Ionicons name="checkmark-circle" size={20} color="#4caf50" />
-                    </View>
+                {isLoadingProjects ? (
+                  <View style={styles.loadingContainer}>
+                    <Text style={styles.loadingText}>Cargando proyectos...</Text>
                   </View>
-                </View>
+                ) : projects.length === 0 ? (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="folder-open-outline" size={48} color="#999" />
+                    <Text style={styles.emptyText}>No hay proyectos activos</Text>
+                    <Text style={styles.emptySubtext}>Contacta al administrador para activar proyectos</Text>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>
+                        <Ionicons name="home" size={16} color="#666" /> Proyecto *
+                      </Text>
+                      <TouchableOpacity
+                        style={styles.dropdownButton}
+                        onPress={() => setShowProjectPicker(true)}
+                      >
+                        <View style={styles.dropdownContent}>
+                          {selectedProject ? (
+                            <>
+                              <Ionicons name="home" size={20} color="#0066CC" />
+                              <Text style={styles.dropdownText}>{selectedProject.project_name}</Text>
+                            </>
+                          ) : (
+                            <>
+                              <Ionicons name="chevron-down-circle-outline" size={20} color="#999" />
+                              <Text style={styles.dropdownPlaceholder}>Selecciona un proyecto</Text>
+                            </>
+                          )}
+                        </View>
+                        <Ionicons name="chevron-down" size={20} color="#666" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {selectedProject && (
+                      <View style={styles.selectedProjectCard}>
+                        <Text style={styles.selectedProjectTitle}>
+                          <Ionicons name="information-circle" size={16} /> Información del Proyecto
+                        </Text>
+                        <View style={styles.selectedProjectInfo}>
+                          <Text style={styles.selectedProjectLabel}>Cliente:</Text>
+                          <Text style={styles.selectedProjectValue}>{selectedProject.client_name}</Text>
+                        </View>
+                        <View style={styles.selectedProjectInfo}>
+                          <Text style={styles.selectedProjectLabel}>Ubicación:</Text>
+                          <Text style={styles.selectedProjectValue}>{selectedProject.location}</Text>
+                        </View>
+                        {selectedProject.client_email && (
+                          <View style={styles.selectedProjectInfo}>
+                            <Text style={styles.selectedProjectLabel}>Email:</Text>
+                            <Text style={styles.selectedProjectValue}>{selectedProject.client_email}</Text>
+                          </View>
+                        )}
+                        {selectedProject.client_phone && (
+                          <View style={styles.selectedProjectInfo}>
+                            <Text style={styles.selectedProjectLabel}>Teléfono:</Text>
+                            <Text style={styles.selectedProjectValue}>{selectedProject.client_phone}</Text>
+                          </View>
+                        )}
+                        {selectedProject.pool_gallons && (
+                          <View style={styles.selectedProjectInfo}>
+                            <Text style={styles.selectedProjectLabel}>Galonaje:</Text>
+                            <Text style={styles.selectedProjectValue}>{selectedProject.pool_gallons.toLocaleString()} gal</Text>
+                          </View>
+                        )}
+                      </View>
+                    )}
+
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>
+                        <Ionicons name="person-circle" size={16} color="#666" /> Técnico Asignado
+                      </Text>
+                      <View style={styles.technicianCard}>
+                        <View style={styles.technicianAvatar}>
+                          <Text style={styles.technicianInitial}>
+                            {user?.name?.charAt(0).toUpperCase() || 'T'}
+                          </Text>
+                        </View>
+                        <View style={styles.technicianInfo}>
+                          <Text style={styles.technicianName}>{user?.name || 'Técnico'}</Text>
+                          <Text style={styles.technicianRole}>Técnico de mantenimiento</Text>
+                        </View>
+                        <View style={styles.technicianBadge}>
+                          <Ionicons name="checkmark-circle" size={20} color="#4caf50" />
+                        </View>
+                      </View>
+                    </View>
+                  </>
+                )}
               </View>
             </View>
           )}
@@ -520,9 +597,9 @@ export default function UnifiedNewReportScreen() {
                 <View style={[styles.stepIconLarge, { backgroundColor: '#e3f2fd' }]}>
                   <Ionicons name="analytics" size={32} color="#2196F3" />
                 </View>
-                <Text style={styles.stepTitle}>Parámetros Iniciales</Text>
+                <Text style={styles.stepTitle}>Parámetros</Text>
                 <Text style={styles.stepDescription}>
-                  Mide y registra los parámetros antes del mantenimiento
+                  Mide y registra los parámetros del agua
                 </Text>
               </View>
 
@@ -536,7 +613,7 @@ export default function UnifiedNewReportScreen() {
                       <Text style={styles.parameterLabel}>{param.label}</Text>
                       <TextInput
                         style={styles.parameterInput}
-                        value={parametersBefore[param.key as keyof Parameters].toString()}
+                        value={parametersBeforeStr[param.key as keyof Parameters]}
                         onChangeText={(value) => handleParameterChange('before', param.key as keyof Parameters, value)}
                         keyboardType="decimal-pad"
                         placeholder="0.0"
@@ -634,51 +711,7 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {currentStep === 6 && (
-            <View style={styles.stepContainer}>
-              <View style={styles.stepHeader}>
-                <View style={[styles.stepIconLarge, { backgroundColor: '#e8f5e9' }]}>
-                  <Ionicons name="analytics" size={32} color="#4caf50" />
-                </View>
-                <Text style={styles.stepTitle}>Parámetros Finales</Text>
-                <Text style={styles.stepDescription}>
-                  Mide y registra los parámetros después del mantenimiento
-                </Text>
-              </View>
-
-              <View style={styles.card}>
-                {parameterConfigs.map((param, index) => (
-                  <View key={param.key} style={styles.parameterRow}>
-                    <View style={[styles.parameterIcon, { backgroundColor: '#e8f5e9' }]}>
-                      <Ionicons name={param.icon as any} size={20} color="#4caf50" />
-                    </View>
-                    <View style={styles.parameterContent}>
-                      <Text style={styles.parameterLabel}>{param.label}</Text>
-                      <TextInput
-                        style={styles.parameterInput}
-                        value={parametersAfter[param.key as keyof Parameters].toString()}
-                        onChangeText={(value) => handleParameterChange('after', param.key as keyof Parameters, value)}
-                        keyboardType="decimal-pad"
-                        placeholder="0.0"
-                        placeholderTextColor="#999"
-                      />
-                    </View>
-                  </View>
-                ))}
-              </View>
-
-              <View style={styles.comparisonCard}>
-                <Text style={styles.comparisonTitle}>
-                  <MaterialCommunityIcons name="compare" size={18} color="#0066CC" /> Comparación
-                </Text>
-                <Text style={styles.comparisonSubtitle}>
-                  Asegúrate de que los parámetros finales estén dentro del rango óptimo
-                </Text>
-              </View>
-            </View>
-          )}
-
-          {currentStep === 7 && (
+          {currentStep === 5 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
                 <View style={[styles.stepIconLarge, { backgroundColor: '#e8f5e9' }]}>
@@ -739,7 +772,7 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {currentStep === 8 && (
+          {currentStep === 6 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
                 <View style={[styles.stepIconLarge, { backgroundColor: '#e8f5e9' }]}>
@@ -799,16 +832,32 @@ export default function UnifiedNewReportScreen() {
 
               <View style={styles.summaryCard}>
                 <Text style={styles.summaryTitle}>Resumen del Reporte</Text>
-                <View style={styles.summaryRow}>
-                  <Ionicons name="person" size={16} color="#666" />
-                  <Text style={styles.summaryLabel}>Cliente:</Text>
-                  <Text style={styles.summaryValue}>{clientName || 'Sin especificar'}</Text>
-                </View>
-                <View style={styles.summaryRow}>
-                  <Ionicons name="location" size={16} color="#666" />
-                  <Text style={styles.summaryLabel}>Ubicación:</Text>
-                  <Text style={styles.summaryValue}>{location || 'Sin especificar'}</Text>
-                </View>
+                {selectedProject && (
+                  <>
+                    <View style={styles.summaryRow}>
+                      <Ionicons name="home" size={16} color="#666" />
+                      <Text style={styles.summaryLabel}>Proyecto:</Text>
+                      <Text style={styles.summaryValue}>{selectedProject.project_name}</Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                      <Ionicons name="person" size={16} color="#666" />
+                      <Text style={styles.summaryLabel}>Cliente:</Text>
+                      <Text style={styles.summaryValue}>{selectedProject.client_name}</Text>
+                    </View>
+                    <View style={styles.summaryRow}>
+                      <Ionicons name="location" size={16} color="#666" />
+                      <Text style={styles.summaryLabel}>Ubicación:</Text>
+                      <Text style={styles.summaryValue}>{selectedProject.location}</Text>
+                    </View>
+                    {selectedProject.pool_gallons && (
+                      <View style={styles.summaryRow}>
+                        <Ionicons name="water" size={16} color="#666" />
+                        <Text style={styles.summaryLabel}>Galonaje:</Text>
+                        <Text style={styles.summaryValue}>{selectedProject.pool_gallons.toLocaleString()} gal</Text>
+                      </View>
+                    )}
+                  </>
+                )}
                 <View style={styles.summaryRow}>
                   <Ionicons name="checkmark-done" size={16} color="#666" />
                   <Text style={styles.summaryLabel}>Pasos completados:</Text>
@@ -862,6 +911,76 @@ export default function UnifiedNewReportScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Project Picker Modal */}
+      <Modal
+        visible={showProjectPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowProjectPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.pickerModal}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Seleccionar Proyecto</Text>
+              <TouchableOpacity onPress={() => setShowProjectPicker(false)}>
+                <Ionicons name="close-circle" size={28} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.pickerList}>
+              {projects.map((project) => (
+                <TouchableOpacity
+                  key={project.id}
+                  style={[
+                    styles.pickerItem,
+                    selectedProject?.id === project.id && styles.pickerItemSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedProject(project);
+                    setShowProjectPicker(false);
+                  }}
+                >
+                  <View style={styles.pickerItemContent}>
+                    <View style={[
+                      styles.pickerItemIcon,
+                      selectedProject?.id === project.id && styles.pickerItemIconSelected
+                    ]}>
+                      <Ionicons 
+                        name="home" 
+                        size={24} 
+                        color={selectedProject?.id === project.id ? '#0066CC' : '#666'} 
+                      />
+                    </View>
+                    <View style={styles.pickerItemInfo}>
+                      <Text style={[
+                        styles.pickerItemName,
+                        selectedProject?.id === project.id && styles.pickerItemNameSelected
+                      ]}>
+                        {project.project_name}
+                      </Text>
+                      <Text style={styles.pickerItemDetails}>
+                        {project.client_name}
+                      </Text>
+                      <Text style={styles.pickerItemLocation}>
+                        📍 {project.location}
+                      </Text>
+                      {project.pool_gallons && (
+                        <Text style={styles.pickerItemPool}>
+                          💧 {project.pool_gallons.toLocaleString()} galones
+                        </Text>
+                      )}
+                    </View>
+                    {selectedProject?.id === project.id && (
+                      <Ionicons name="checkmark-circle" size={28} color="#0066CC" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1485,5 +1604,225 @@ const styles = StyleSheet.create({
   submitButtonDisabled: {
     backgroundColor: '#ccc',
     opacity: 0.5,
+  },
+
+  // Project Styles
+  loadingContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 14,
+    color: '#666',
+  },
+  emptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginTop: 16,
+  },
+  emptySubtext: {
+    fontSize: 13,
+    color: '#999',
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  pickerContainer: {
+    gap: 12,
+  },
+  projectOption: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  projectOptionSelected: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#0066CC',
+  },
+  projectOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  projectIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  projectInfo: {
+    flex: 1,
+  },
+  projectName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  projectNameSelected: {
+    color: '#0066CC',
+  },
+  projectDetails: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 2,
+  },
+  projectPool: {
+    fontSize: 12,
+    color: '#0066CC',
+    fontWeight: '500',
+  },
+  selectedProjectCard: {
+    backgroundColor: '#e8f5e9',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#4caf50',
+  },
+  selectedProjectTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#2e7d32',
+    marginBottom: 12,
+  },
+  selectedProjectInfo: {
+    flexDirection: 'row',
+    marginBottom: 8,
+  },
+  selectedProjectLabel: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '500',
+    width: 80,
+  },
+  selectedProjectValue: {
+    fontSize: 13,
+    color: '#1a1a1a',
+    fontWeight: '600',
+    flex: 1,
+  },
+
+  // Dropdown Styles
+  dropdownButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 8,
+  },
+  dropdownContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  dropdownText: {
+    fontSize: 16,
+    color: '#1a1a1a',
+    fontWeight: '600',
+    flex: 1,
+  },
+  dropdownPlaceholder: {
+    fontSize: 16,
+    color: '#999',
+    flex: 1,
+  },
+
+  // Modal Picker Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  pickerModal: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '80%',
+    paddingBottom: 20,
+  },
+  pickerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  pickerTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1a1a1a',
+  },
+  pickerList: {
+    padding: 16,
+  },
+  pickerItem: {
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  pickerItemSelected: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#0066CC',
+  },
+  pickerItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  pickerItemIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pickerItemIconSelected: {
+    backgroundColor: '#bbdefb',
+  },
+  pickerItemInfo: {
+    flex: 1,
+  },
+  pickerItemName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 4,
+  },
+  pickerItemNameSelected: {
+    color: '#0066CC',
+  },
+  pickerItemDetails: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 2,
+  },
+  pickerItemLocation: {
+    fontSize: 13,
+    color: '#888',
+    marginBottom: 4,
+  },
+  pickerItemPool: {
+    fontSize: 12,
+    color: '#0066CC',
+    fontWeight: '600',
   },
 });

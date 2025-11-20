@@ -29,6 +29,11 @@ type NavigationProp = StackNavigationProp<any>;
 interface Report {
   id: number;
   report_number: string;
+  project_id?: number;
+  project_name?: string;
+  project_client_email?: string;
+  project_client_phone?: string;
+  project_pool_gallons?: number;
   client_name: string;
   location: string;
   technician: string;
@@ -240,7 +245,16 @@ export default function ReportHistoryScreen() {
                 
                 // Descargar el PDF del reporte
                 const pdfUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf`;
-                const fileName = `reporte_${report.report_number}.pdf`;
+                
+                // Construir nombre del archivo: Reporte-#003-Beach Club.pdf
+                let fileName = `Reporte-${report.report_number}`;
+                if (report.project_name) {
+                  // Limpiar el nombre del proyecto para el archivo (eliminar caracteres especiales)
+                  const cleanProjectName = report.project_name.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+                  fileName += `-${cleanProjectName}`;
+                }
+                fileName += '.pdf';
+                
                 const fileUri = FileSystem.documentDirectory + fileName;
 
                 const downloadResult = await FileSystem.downloadAsync(
@@ -306,13 +320,24 @@ export default function ReportHistoryScreen() {
   const sendReportAsText = (report: Report) => {
     let message = `*🏊 REPORTE DE MANTENIMIENTO DE PISCINA*\n\n`;
     message += `*Número de Reporte:* ${report.report_number}\n`;
+    
+    if (report.project_name) {
+      message += `*Proyecto:* ${report.project_name}\n`;
+    }
+    
     message += `*Cliente:* ${report.client_name}\n`;
     message += `*Ubicación:* ${report.location}\n`;
     message += `*Técnico:* ${report.technician}\n`;
-    message += `*Fecha:* ${formatDate(report.created_at)}\n\n`;
+    message += `*Fecha:* ${formatDate(report.created_at)}\n`;
+
+    if (report.project_pool_gallons) {
+      message += `*💧 Galonaje de Piscina:* ${report.project_pool_gallons.toLocaleString()} galones\n`;
+    }
+    
+    message += `\n`;
 
     if (report.parameters_before) {
-      message += `*📊 PARÁMETROS ANTES DEL MANTENIMIENTO*\n`;
+      message += `*📊 PARÁMETROS DEL AGUA*\n`;
       message += `• Cloro Libre: ${report.parameters_before.cl} ppm\n`;
       message += `• pH: ${report.parameters_before.ph}\n`;
       message += `• Alcalinidad: ${report.parameters_before.alk} ppm\n`;
@@ -339,17 +364,6 @@ export default function ReportHistoryScreen() {
       }
     }
 
-    if (report.parameters_after) {
-      message += `*📈 PARÁMETROS DESPUÉS DEL MANTENIMIENTO*\n`;
-      message += `• Cloro Libre: ${report.parameters_after.cl} ppm\n`;
-      message += `• pH: ${report.parameters_after.ph}\n`;
-      message += `• Alcalinidad: ${report.parameters_after.alk} ppm\n`;
-      message += `• Estabilizador: ${report.parameters_after.stabilizer} ppm\n`;
-      message += `• Dureza: ${report.parameters_after.hardness} ppm\n`;
-      message += `• Sal: ${report.parameters_after.salt} ppm\n`;
-      message += `• Temperatura: ${report.parameters_after.temperature} °C\n\n`;
-    }
-
     if (report.materials_delivered) {
       message += `*📦 Materiales Entregados:* ${report.materials_delivered}\n`;
     }
@@ -363,7 +377,11 @@ export default function ReportHistoryScreen() {
     message += `\n_Reporte generado por AquaPool App_`;
 
     const encodedMessage = encodeURIComponent(message);
-    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+    
+    // If project has client phone, send directly to that number, otherwise let user choose
+    const whatsappUrl = report.project_client_phone 
+      ? `https://wa.me/${report.project_client_phone.replace(/[^0-9]/g, '')}?text=${encodedMessage}`
+      : `https://wa.me/?text=${encodedMessage}`;
 
     Linking.openURL(whatsappUrl).catch(() => {
       Alert.alert('Error', 'No se pudo abrir WhatsApp. Asegúrate de tener WhatsApp instalado.');
@@ -505,6 +523,12 @@ export default function ReportHistoryScreen() {
               <View style={styles.reportHeader}>
                 <View style={styles.reportTitleSection}>
                   <Text style={styles.reportNumber}>{report.report_number}</Text>
+                  {report.project_name && (
+                    <View style={styles.projectBadge}>
+                      <Ionicons name="home" size={12} color="#0066CC" />
+                      <Text style={styles.projectBadgeText}>{report.project_name}</Text>
+                    </View>
+                  )}
                   <View style={[styles.statusBadge, { backgroundColor: getStatusColor(report) }]}>
                     <Text style={styles.statusText}>{getStatusText(report)}</Text>
                   </View>
@@ -675,6 +699,37 @@ export default function ReportHistoryScreen() {
             </View>
 
             <ScrollView style={styles.modalContent}>
+              {selectedReport.project_name && (
+                <View style={styles.modalSection}>
+                  <Text style={styles.modalSectionTitle}>Información del Proyecto</Text>
+                  <View style={styles.infoGrid}>
+                    <Text style={styles.infoLabel}>Proyecto:</Text>
+                    <Text style={styles.infoValue}>{selectedReport.project_name}</Text>
+                    
+                    {selectedReport.project_pool_gallons && (
+                      <>
+                        <Text style={styles.infoLabel}>Galonaje de Piscina:</Text>
+                        <Text style={styles.infoValue}>{selectedReport.project_pool_gallons.toLocaleString()} gal</Text>
+                      </>
+                    )}
+                    
+                    {selectedReport.project_client_email && (
+                      <>
+                        <Text style={styles.infoLabel}>Email del Cliente:</Text>
+                        <Text style={styles.infoValue}>{selectedReport.project_client_email}</Text>
+                      </>
+                    )}
+                    
+                    {selectedReport.project_client_phone && (
+                      <>
+                        <Text style={styles.infoLabel}>Teléfono del Cliente:</Text>
+                        <Text style={styles.infoValue}>{selectedReport.project_client_phone}</Text>
+                      </>
+                    )}
+                  </View>
+                </View>
+              )}
+
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Información General</Text>
                 <View style={styles.infoGrid}>
@@ -734,7 +789,7 @@ export default function ReportHistoryScreen() {
 
               {selectedReport.parameters_before && (
                 <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Parámetros Antes</Text>
+                  <Text style={styles.modalSectionTitle}>Parámetros</Text>
                   <View style={styles.parametersGrid}>
                     {renderParameterValue('Cloro Libre', selectedReport.parameters_before.cl, ' ppm')}
                     {renderParameterValue('pH', selectedReport.parameters_before.ph)}
@@ -743,21 +798,6 @@ export default function ReportHistoryScreen() {
                     {renderParameterValue('Dureza', selectedReport.parameters_before.hardness, ' ppm')}
                     {renderParameterValue('Sal', selectedReport.parameters_before.salt, ' ppm')}
                     {renderParameterValue('Temperatura', selectedReport.parameters_before.temperature, ' °C')}
-                  </View>
-                </View>
-              )}
-
-              {selectedReport.parameters_after && (
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Parámetros Después</Text>
-                  <View style={styles.parametersGrid}>
-                    {renderParameterValue('Cloro Libre', selectedReport.parameters_after.cl, ' ppm')}
-                    {renderParameterValue('pH', selectedReport.parameters_after.ph)}
-                    {renderParameterValue('Alcalinidad', selectedReport.parameters_after.alk, ' ppm')}
-                    {renderParameterValue('Estabilizador', selectedReport.parameters_after.stabilizer, ' ppm')}
-                    {renderParameterValue('Dureza', selectedReport.parameters_after.hardness, ' ppm')}
-                    {renderParameterValue('Sal', selectedReport.parameters_after.salt, ' ppm')}
-                    {renderParameterValue('Temperatura', selectedReport.parameters_after.temperature, ' °C')}
                   </View>
                 </View>
               )}
@@ -957,6 +997,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+  },
+  projectBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#e3f2fd',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginRight: 8,
+    borderWidth: 1,
+    borderColor: '#90caf9',
+  },
+  projectBadgeText: {
+    color: '#0066CC',
+    fontSize: 11,
+    fontWeight: '600',
   },
   statusText: {
     color: 'white',
