@@ -18,7 +18,8 @@
     "app:update-backend": "node ./scripts/app-update-backend.js",
     "updateApp:bump:patch": "node ./scripts/app-auto-update.js patch",
     "updateApp:bump:minor": "node ./scripts/app-auto-update.js minor",
-    "updateApp:bump:major": "node ./scripts/app-auto-update.js major"
+    "updateApp:bump:major": "node ./scripts/app-auto-update.js major",
+    "updateApp:continue": "node ./scripts/app-continue-update.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

@@ -159,15 +159,41 @@ async function main() {
   console.log(`4. Nombre del archivo: aquapool-v${newVersion}.apk`);
   console.log(`5. Publica el release\n`);
   
-  const releaseUrl = await question('Pega la URL del release aquí (debe incluir /releases/tag/): ');
+  let releaseUrl;
+  let apkUrl;
   
-  if (!releaseUrl.includes('/releases/tag/')) {
-    console.error('❌ URL inválida. Debe ser la URL del release de GitHub.');
-    process.exit(1);
+  while (true) {
+    releaseUrl = await question('Pega la URL del release aquí (debe incluir /releases/tag/ o /releases/download/): ');
+    
+    // Aceptar URL del release o URL del APK
+    if (releaseUrl.includes('/releases/tag/') || releaseUrl.includes('/releases/download/')) {
+      // Si pegó la URL del APK, extraer la versión y construir la URL correcta
+      if (releaseUrl.includes('/releases/download/')) {
+        log('✅ URL del APK detectada, extrayendo información...', '🔍');
+      }
+      
+      apkUrl = `https://github.com/FabianJimenez29/AQP-App/releases/download/v${newVersion}/aquapool-v${newVersion}.apk`;
+      log(`✅ URL del APK: ${apkUrl}\n`);
+      break;
+    } else {
+      console.error('❌ URL inválida. Debe incluir /releases/tag/ o /releases/download/');
+      console.log('Ejemplos válidos:');
+      console.log(`  - https://github.com/FabianJimenez29/AQP-App/releases/tag/v${newVersion}`);
+      console.log(`  - https://github.com/FabianJimenez29/AQP-App/releases/download/v${newVersion}/aquapool-v${newVersion}.apk\n`);
+      
+      const retry = await question('¿Intentar de nuevo? (s/n): ');
+      if (retry.toLowerCase() !== 's') {
+        console.log('\n⚠️  Proceso cancelado. Los cambios ya están commiteados.');
+        console.log('Para continuar manualmente:');
+        console.log(`1. Asegúrate de que el release esté creado en GitHub`);
+        console.log(`2. Actualiza el backend: cd ../AQP-backend && vim src/routes/app-version.js`);
+        console.log(`3. Push del backend: git add . && git commit -m "chore(app): Update to ${newVersion}" && git push`);
+        console.log(`4. Tag y push de la app: git tag v${newVersion} && git push && git push origin v${newVersion}`);
+        console.log(`5. Deploy al servidor: npm run remote → opción 5\n`);
+        process.exit(0);
+      }
+    }
   }
-  
-  const apkUrl = `https://github.com/FabianJimenez29/AQP-App/releases/download/v${newVersion}/aquapool-v${newVersion}.apk`;
-  log(`✅ URL del APK: ${apkUrl}\n`);
 
   // PASO 7: Actualizar backend con URL final
   log('PASO 7: Actualizando backend con URL del APK...', '🔄');
