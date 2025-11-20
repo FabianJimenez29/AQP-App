@@ -233,84 +233,114 @@ export default function ReportHistoryScreen() {
         return;
       }
 
-      Alert.alert(
-        'Compartir Reporte',
-        '¿Cómo deseas compartir el reporte?',
-        [
-          {
-            text: 'Como PDF',
-            onPress: async () => {
-              try {
-                Alert.alert('Generando PDF', 'Por favor espera...');
-                
-                // Descargar el PDF del reporte
-                const pdfUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf`;
-                
-                // Construir nombre del archivo: Reporte-#003-Beach Club.pdf
-                let fileName = `Reporte-${report.report_number}`;
-                if (report.project_name) {
-                  // Limpiar el nombre del proyecto para el archivo (eliminar caracteres especiales)
-                  const cleanProjectName = report.project_name.replace(/[^a-zA-Z0-9\s]/g, '').trim();
-                  fileName += `-${cleanProjectName}`;
-                }
-                fileName += '.pdf';
-                
-                const fileUri = FileSystem.documentDirectory + fileName;
+      // Primero descargar el PDF del servidor
+      try {
+        Alert.alert('📄 Generando PDF', 'Descargando el reporte del servidor...');
+        
+        console.log('📄 Datos del reporte:', {
+          id: report.id,
+          report_number: report.report_number,
+          project_name: report.project_name
+        });
+        
+        // Construir nombre del archivo
+        const reportNum = report.report_number || 'SIN-NUMERO';
+        let fileName = `Reporte-${reportNum}`;
+        
+        if (report.project_name) {
+          const cleanProjectName = report.project_name
+            .replace(/[^a-zA-Z0-9\s-]/g, '')
+            .trim()
+            .replace(/\s+/g, '-');
+          if (cleanProjectName) {
+            fileName += `-${cleanProjectName}`;
+          }
+        }
+        fileName += '.pdf';
+        
+        console.log('📄 Nombre del archivo:', fileName);
+        
+        const fileUri = FileSystem.cacheDirectory + fileName;
+        const pdfUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf`;
+        
+        console.log('📄 Descargando PDF desde:', pdfUrl);
+        
+        // Descargar el PDF
+        const downloadResult = await FileSystem.downloadAsync(pdfUrl, fileUri, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          }
+        });
 
-                const downloadResult = await FileSystem.downloadAsync(
-                  pdfUrl,
-                  fileUri,
-                  {
-                    headers: {
-                      'Authorization': `Bearer ${token}`
-                    }
-                  }
-                );
+        console.log('📄 Status:', downloadResult.status);
 
-                if (downloadResult.status !== 200) {
-                  throw new Error('Error al descargar el PDF');
-                }
+        if (downloadResult.status !== 200) {
+          throw new Error(`Error al descargar el PDF (código ${downloadResult.status})`);
+        }
 
-                // Verificar si se puede compartir
-                const canShare = await Sharing.isAvailableAsync();
-                if (canShare) {
-                  // Compartir el PDF usando el sistema nativo
+        // Verificar el archivo
+        const fileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
+        console.log('📄 Archivo descargado:', fileInfo);
+
+        if (!fileInfo.exists || fileInfo.size === 0) {
+          throw new Error('El PDF no se descargó correctamente');
+        }
+
+        const fileSizeMB = (fileInfo.size / 1024 / 1024).toFixed(2);
+        console.log(`✅ PDF listo - ${fileSizeMB} MB`);
+
+        // Mostrar opciones de compartir
+        Alert.alert(
+          '✅ PDF Generado',
+          `El reporte está listo (${fileSizeMB} MB)\n\n¿Cómo deseas compartirlo?`,
+          [
+            {
+              text: '📱 WhatsApp / Email / Otros',
+              onPress: async () => {
+                try {
+                  console.log('📤 Abriendo menú de compartir...');
+                  
                   await Sharing.shareAsync(downloadResult.uri, {
                     mimeType: 'application/pdf',
-                    dialogTitle: `Compartir Reporte ${report.report_number}`,
+                    dialogTitle: `Compartir Reporte ${reportNum}`,
                     UTI: 'com.adobe.pdf'
                   });
-                } else {
-                  // Fallback: abrir con el visor del sistema
-                  if (Platform.OS === 'android') {
-                    const contentUri = await FileSystem.getContentUriAsync(downloadResult.uri);
-                    await Linking.openURL(contentUri);
-                  } else {
-                    await Linking.openURL(downloadResult.uri);
-                  }
                   
+                  console.log('✅ PDF compartido');
+                  
+                } catch (shareError: any) {
+                  console.error('❌ Error al compartir:', shareError);
                   Alert.alert(
-                    'PDF Generado', 
-                    'El PDF ha sido generado. Ahora puedes compartirlo por WhatsApp desde el visor de archivos.'
+                    'Error',
+                    `No se pudo abrir el menú de compartir.\n\nError: ${shareError.message}`
                   );
                 }
-                
-              } catch (error) {
-                console.error('Error al compartir PDF:', error);
-                Alert.alert('Error', 'No se pudo generar el PDF del reporte. Intenta compartir como texto.');
               }
+            },
+            {
+              text: '💬 Enviar como Texto',
+              onPress: () => sendReportAsText(report)
+            },
+            {
+              text: 'Cancelar',
+              style: 'cancel'
             }
-          },
-          {
-            text: 'Como Texto',
-            onPress: () => sendReportAsText(report)
-          },
-          {
-            text: 'Cancelar',
-            style: 'cancel'
-          }
-        ]
-      );
+          ]
+        );
+        
+      } catch (error: any) {
+        console.error('❌ Error al generar PDF:', error);
+        console.error('   Mensaje:', error.message);
+        
+        Alert.alert(
+          'Error al generar PDF',
+          `No se pudo descargar el PDF del servidor.\n\nError: ${error.message}\n\n¿Deseas compartir como texto?`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Compartir como Texto', onPress: () => sendReportAsText(report) }
+          ]
+        );
+      }
     } catch (error) {
       console.error('Error:', error);
       Alert.alert('Error', 'Ocurrió un error al compartir el reporte');
