@@ -15,11 +15,7 @@
     "build:production": "npx eas-cli build --platform android --profile production",
     "build:local": "npx expo prebuild --platform android && cd android && ./gradlew assembleRelease",
     "app:bump": "node ./scripts/app-bump-version.js",
-    "app:update-backend": "node ./scripts/app-update-backend.js",
-    "updateApp:bump:patch": "node ./scripts/app-auto-update.js patch",
-    "updateApp:bump:minor": "node ./scripts/app-auto-update.js minor",
-    "updateApp:bump:major": "node ./scripts/app-auto-update.js major",
-    "updateApp:continue": "node ./scripts/app-continue-update.js"
+    "app:update-backend": "node ./scripts/app-update-backend.js"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
