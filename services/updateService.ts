@@ -2,6 +2,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as IntentLauncher from 'expo-intent-launcher';
 import { Platform, Alert, Linking } from 'react-native';
 import apiService from './api';
+import Constants from 'expo-constants';
 
 interface UpdateInfo {
   version: string;
@@ -11,7 +12,7 @@ interface UpdateInfo {
 }
 
 class UpdateService {
-  private currentVersion = '1.0.13'; 
+  private currentVersion = Constants.expoConfig?.version || '1.0.13'; 
   private checkInterval: NodeJS.Timeout | null = null;
   private isUpdating = false;
 
