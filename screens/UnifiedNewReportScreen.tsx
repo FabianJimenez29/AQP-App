@@ -10,6 +10,8 @@ import {
   Image,
   Animated,
   Modal,
+  Platform,
+  Linking,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -45,6 +47,9 @@ export default function UnifiedNewReportScreen() {
   const [location, setLocation] = useState('');
   const [beforePhoto, setBeforePhoto] = useState<string | null>(null);
   const [afterPhoto, setAfterPhoto] = useState<string | null>(null);
+  
+  // Guardar hora de entrada cuando se inicia el reporte
+  const [entryTime, setEntryTime] = useState<string | null>(null);
   
   // Usar strings para permitir la entrada de decimales mientras se escribe
   const [parametersBeforeStr, setParametersBeforeStr] = useState<Record<string, string>>({
@@ -110,18 +115,44 @@ export default function UnifiedNewReportScreen() {
   };
 
   const handleCameraCapture = async (type: 'before' | 'after') => {
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      if (type === 'before') {
-        setBeforePhoto(result.assets[0].uri);
-      } else {
-        setAfterPhoto(result.assets[0].uri);
+    try {
+      // IMPORTANTE: Pedir permisos primero en iOS
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permiso Requerido',
+          'Necesitas dar permiso para usar la cámara en Configuración > Expo Go > Cámara',
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Abrir Configuración', onPress: () => {
+              // En iOS puedes abrir configuración
+              if (Platform.OS === 'ios') {
+                Linking.openURL('app-settings:');
+              }
+            }}
+          ]
+        );
+        return;
       }
+
+      const result = await ImagePicker.launchCameraAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        if (type === 'before') {
+          setBeforePhoto(result.assets[0].uri);
+        } else {
+          setAfterPhoto(result.assets[0].uri);
+        }
+      }
+    } catch (error) {
+      console.error('Error al tomar foto:', error);
+      Alert.alert('Error', 'No se pudo tomar la foto');
     }
   };
 
@@ -219,8 +250,8 @@ export default function UnifiedNewReportScreen() {
                 clientName: selectedProject.client_name,
                 location: selectedProject.location,
                 technician: user?.name || 'Técnico',
-                entryTime: new Date().toISOString(),
-                exitTime: new Date().toISOString(),
+                entryTime: entryTime || new Date().toISOString(), // Usar hora guardada
+                exitTime: new Date().toISOString(), // Hora actual de finalización
                 userId: user?.id || 'unknown',
                 beforePhoto: beforePhotoUrl, 
                 afterPhoto: afterPhotoUrl,  
@@ -232,6 +263,10 @@ export default function UnifiedNewReportScreen() {
                 receivedBy: receivedBy.trim(),
                 createdAt: new Date().toISOString(),
               };
+
+              console.log('⏰ Enviando reporte con horas:');
+              console.log('   Entrada:', new Date(entryTime || '').toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' }));
+              console.log('   Salida:', new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' }));
 
               const savedReport = await ApiService.createReport(reportData as any, token || '');
               
@@ -939,6 +974,11 @@ export default function UnifiedNewReportScreen() {
                   onPress={() => {
                     setSelectedProject(project);
                     setShowProjectPicker(false);
+                    // Guardar hora de entrada cuando selecciona el proyecto
+                    if (!entryTime) {
+                      setEntryTime(new Date().toISOString());
+                      console.log('⏰ Hora de entrada registrada:', new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' }));
+                    }
                   }}
                 >
                   <View style={styles.pickerItemContent}>

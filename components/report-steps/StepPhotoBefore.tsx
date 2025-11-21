@@ -7,23 +7,16 @@ import {
   Image,
   Alert,
 } from 'react-native';
-import { Camera, CameraType } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { updateCurrentReport } from '../../store/reportSlice';
 
 export default function StepPhotoBefore() {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [photo, setPhoto] = useState<string | null>(null);
   const { currentReport } = useAppSelector((state) => state.report);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    (async () => {
-      const { status } = await Camera.requestCameraPermissionsAsync();
-      setHasPermission(status === 'granted');
-    })();
-
     if (currentReport?.beforePhoto) {
       setPhoto(currentReport.beforePhoto);
     }
@@ -31,6 +24,17 @@ export default function StepPhotoBefore() {
 
   const takePhoto = async () => {
     try {
+      // Pedir permisos primero
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permiso Requerido',
+          'Necesitas dar permiso para usar la cámara'
+        );
+        return;
+      }
+
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
@@ -48,37 +52,16 @@ export default function StepPhotoBefore() {
     }
   };
 
-
-
   const retakePhoto = () => {
     setPhoto(null);
     dispatch(updateCurrentReport({ beforePhoto: '' }));
   };
 
-  if (hasPermission === null) {
-    return (
-      <View style={styles.container}>
-        <Text>Solicitando permisos de cámara...</Text>
-      </View>
-    );
-  }
-
-  if (hasPermission === false) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.noAccessText}>No hay acceso a la cámara</Text>
-        <Text style={styles.subtitle}>
-          Para usar esta función, necesitas habilitar el acceso a la cámara en la configuración de tu dispositivo.
-        </Text>
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Foto Antes del Mantenimiento</Text>
+      <Text style={styles.title}>Foto del Mantenimiento</Text>
       <Text style={styles.subtitle}>
-        Toma una foto del estado actual de la piscina antes de comenzar el mantenimiento
+        Toma una foto de la piscina
       </Text>
 
       {photo ? (

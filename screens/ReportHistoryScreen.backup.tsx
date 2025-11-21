@@ -11,9 +11,11 @@ import {
   Alert,
   Linking,
   Platform,
+  Share,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as MediaLibrary from 'expo-media-library';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
@@ -106,8 +108,6 @@ export default function ReportHistoryScreen() {
   const [activeTab, setActiveTab] = useState<'reports' | 'orders'>('reports');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUserReports({ page: 1, limit: 50 }));
@@ -235,146 +235,225 @@ export default function ReportHistoryScreen() {
         return;
       }
 
-      // Primero descargar el PDF del servidor
+      console.log('📄 Iniciando proceso de compartir PDF...');
+      console.log('   Report ID:', report.id);
+      console.log('   Report Number:', report.report_number);
+      console.log('   Project:', report.project_name);
+      
       try {
-        setIsDownloading(true);
-        setDownloadProgress(0);
         
-        console.log('📄 Datos del reporte:', {
-          id: report.id,
-          report_number: report.report_number,
-          project_name: report.project_name
-        });
+        // Construir nombre del archivo de forma más segura
+        const reportNum = report.report_number || report.id?.toString() || 'REPORTE';
+        const timestamp = Date.now();
         
-        // Construir nombre del archivo
-        const reportNum = report.report_number || 'SIN-NUMERO';
-        // Limpiar caracteres especiales como # que causan problemas en iOS
+        // Limpiar el número de reporte (remover caracteres especiales como #, /, \, etc.)
         const cleanReportNum = reportNum.replace(/[^a-zA-Z0-9-_]/g, '');
-        let fileName = `Reporte-${cleanReportNum}`;
         
-        if (report.project_name) {
-          const cleanProjectName = report.project_name
-            .replace(/[^a-zA-Z0-9\s-]/g, '')
-            .trim()
-            .replace(/\s+/g, '-');
-          if (cleanProjectName) {
-            fileName += `-${cleanProjectName}`;
-          }
-        }
-        fileName += '.pdf';
+        // Nombre simple y seguro
+        const fileName = `Reporte_${cleanReportNum}_${timestamp}.pdf`;
         
-        console.log('📄 Nombre del archivo:', fileName);
+        console.log('📄 Construyendo nombre del archivo:');
+        console.log('   report_number:', report.report_number);
+        console.log('   report.id:', report.id);
+        console.log('   Limpio:', cleanReportNum);
+        console.log('   Nombre final:', fileName);
         
-        const fileUri = FileSystem.cacheDirectory + fileName;
+        const fileUri = `${FileSystem.cacheDirectory}${fileName}`;
         const pdfUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf`;
         
-        console.log('📄 Descargando PDF desde:', pdfUrl);
+        console.log('📄 URL del PDF:', pdfUrl);
+        console.log('📄 Guardando en:', fileUri);
         
-        // Crear descarga con callback de progreso
-        const callback = (downloadProgressData: FileSystem.DownloadProgressData) => {
-          const progress = downloadProgressData.totalBytesWritten / downloadProgressData.totalBytesExpectedToWrite;
-          setDownloadProgress(progress);
-          console.log(`📊 Progreso: ${(progress * 100).toFixed(0)}%`);
-        };
+        // Mostrar indicador de descarga
+        const downloadPromise = FileSystem.downloadAsync(pdfUrl, fileUri, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/pdf'
+          }
+        });
 
-        const downloadResumable = FileSystem.createDownloadResumable(
-          pdfUrl,
-          fileUri,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            }
-          },
-          callback
+        // Timeout de 30 segundos
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Tiempo de espera agotado (30s)')), 30000)
         );
 
-        const downloadResult = await downloadResumable.downloadAsync();
+        console.log('⏳ Descargando PDF del servidor...');
+        const downloadResult = await Promise.race([downloadPromise, timeoutPromise]) as any;
 
-        console.log('📄 Status:', downloadResult?.status);
+        console.log('📄 Descarga completada');
+        console.log('   Status:', downloadResult.status);
+        console.log('   URI:', downloadResult.uri);
+        console.log('   MD5:', downloadResult.md5);
+        console.log('   Headers:', downloadResult.headers);
 
-        if (!downloadResult || downloadResult.status !== 200) {
-          throw new Error(`Error al descargar el PDF (código ${downloadResult?.status})`);
+        if (downloadResult.status !== 200) {
+          throw new Error(`Error al descargar el PDF (HTTP ${downloadResult.status})`);
         }
 
-        // Verificar el archivo
+        // Pequeña espera para asegurar que el archivo se escribió completamente
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Verificar el archivo descargado
         const fileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
-        console.log('📄 Archivo descargado:', fileInfo);
+        console.log('📄 Info del archivo después de espera:');
+        console.log('   Existe:', fileInfo.exists);
+        console.log('   Es directorio:', fileInfo.isDirectory);
+        if (fileInfo.exists && 'size' in fileInfo) {
+          console.log('   Tamaño:', fileInfo.size, 'bytes');
+          console.log('   Tamaño MB:', (fileInfo.size / 1024 / 1024).toFixed(2), 'MB');
+        }
+        if (fileInfo.exists && 'modificationTime' in fileInfo) {
+          console.log('   Modificado:', new Date(fileInfo.modificationTime * 1000).toISOString());
+        }
+        console.log('   URI:', fileInfo.uri);
 
-        if (!fileInfo.exists || fileInfo.size === 0) {
-          throw new Error('El PDF no se descargó correctamente');
+        if (!fileInfo.exists) {
+          throw new Error('El archivo no existe después de la descarga');
         }
 
-        const fileSizeMB = (fileInfo.size / 1024 / 1024).toFixed(2);
-        console.log(`✅ PDF listo - ${fileSizeMB} MB`);
+        if (fileInfo.exists && 'size' in fileInfo && fileInfo.size === 0) {
+          throw new Error('El PDF descargado está vacío (0 bytes). El backend envió el archivo pero no se guardó correctamente.');
+        }
 
-        setIsDownloading(false);
+        if (fileInfo.exists && 'size' in fileInfo && fileInfo.size < 1000) {
+          throw new Error(`El PDF es muy pequeño (${fileInfo.size} bytes), probablemente sea un error del servidor`);
+        }
 
-        // Si hay número de WhatsApp, ofrecer enviar directamente
-        if (report.project_client_phone) {
-          const cleanPhone = (report.project_client_phone || '').replace(/[^0-9]/g, '');
+        // Verificar que sea un PDF válido leyendo el contenido
+        try {
+          // Leer los primeros bytes del archivo
+          const fileContent = await FileSystem.readAsStringAsync(downloadResult.uri, {
+            encoding: FileSystem.EncodingType.Base64
+          });
           
-          Alert.alert(
-            '✅ PDF Generado',
-            `El reporte está listo (${fileSizeMB} MB)\n\n¿Cómo deseas enviarlo?\n\n📱 ${report.project_client_phone}`,
-            [
+          if (!fileContent || fileContent.length < 10) {
+            throw new Error('El archivo descargado está vacío o es muy pequeño');
+          }
+          
+          // Decodificar y verificar header
+          const decoded = atob(fileContent.substring(0, Math.min(100, fileContent.length)));
+          const pdfHeader = decoded.substring(0, 4);
+          console.log('📄 Header del archivo:', pdfHeader);
+          console.log('📄 Primeros caracteres:', decoded.substring(0, 20));
+          
+          if (pdfHeader !== '%PDF') {
+            console.error('❌ Contenido del archivo (primeros 100 chars):', decoded.substring(0, 100));
+            throw new Error(`El archivo no es un PDF válido. Header encontrado: "${pdfHeader}"`);
+          }
+          
+          console.log('✅ PDF válido confirmado');
+        } catch (headerError: any) {
+          console.error('❌ Error verificando PDF:', headerError);
+          throw new Error(`PDF inválido o corrupto: ${headerError.message}`);
+        }
+
+        const fileSizeKB = fileInfo.exists && 'size' in fileInfo ? (fileInfo.size / 1024).toFixed(2) : '?';
+        const fileSizeMB = fileInfo.exists && 'size' in fileInfo ? (fileInfo.size / 1024 / 1024).toFixed(2) : '?';
+        console.log(`✅ PDF válido - ${fileSizeMB} MB`);
+
+        // Verificar si el reporte tiene número de teléfono del cliente
+        if (report.project_client_phone) {
+          // Limpiar el número de teléfono
+          const cleanPhone = report.project_client_phone.replace(/[^0-9]/g, '');
+          console.log('📱 Teléfono del cliente:', cleanPhone);
+          
+          // Copiar archivo con nombre limpio para compartir
+          const simpleFileName = `Reporte_${cleanReportNum}.pdf`;
+          const simpleFileUri = `${FileSystem.cacheDirectory}${simpleFileName}`;
+          
+          console.log('📋 Preparando archivo para WhatsApp...');
+          console.log('📋 Copiando a:', simpleFileUri);
+          
+          await FileSystem.copyAsync({
+            from: downloadResult.uri,
+            to: simpleFileUri
+          });
+          
+          // Verificar la copia
+          const copyInfo = await FileSystem.getInfoAsync(simpleFileUri);
+          console.log('📋 Archivo copiado:', copyInfo.exists, copyInfo);
+          
+          if (!copyInfo.exists) {
+            throw new Error('No se pudo copiar el archivo');
+          }
+          
+          console.log('📱 Número destino:', cleanPhone);
+          console.log('📎 Compartiendo PDF con Share API nativo...');
+          
+          // Usar Share API nativo de React Native
+          try {
+            const shareResult = await Share.share(
               {
-                text: 'Enviar link por WhatsApp',
-                onPress: () => {
-                  // Enviar link público del PDF por WhatsApp
-                  const pdfPublicUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf/public`;
-                  
-                  let message = `*🏊 REPORTE DE PISCINA #${report.report_number}*\n\n`;
-                  message += `*Proyecto:* ${report.project_name || 'N/A'}\n`;
-                  message += `*Fecha:* ${new Date(report.created_at).toLocaleDateString()}\n\n`;
-                  message += `📄 *Descarga el PDF aquí:*\n${pdfPublicUrl}\n\n`;
-                  message += `_Reporte generado por AquaPool App_`;
-                  
-                  const encodedMessage = encodeURIComponent(message);
-                  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-                  
-                  console.log('📱 Abriendo WhatsApp con link público:', pdfPublicUrl);
-                  
-                  Linking.openURL(whatsappUrl).catch(() => {
-                    Alert.alert('Error', 'No se pudo abrir WhatsApp');
-                  });
-                }
+                url: simpleFileUri,
+                title: `Reporte ${cleanReportNum}`,
+                message: `Reporte ${cleanReportNum} - ${report.project_name || ''}`
               },
               {
-                text: 'Compartir archivo',
-                onPress: async () => {
-                  try {
-                    console.log('📤 Compartiendo archivo PDF...');
-                    console.log('📱 Número destino:', cleanPhone);
+                subject: `Reporte ${cleanReportNum}`,
+                dialogTitle: `Compartir Reporte ${cleanReportNum}`
+              }
+            );
+            
+            console.log('✅ Share API resultado:', shareResult);
+            
+            // Limpiar archivos temporales después de compartir
+            setTimeout(async () => {
+              try {
+                    console.log('� Abriendo menú para adjuntar PDF...');
                     
-                    // Compartir el archivo con expo-sharing
-                    await Sharing.shareAsync(downloadResult.uri, {
+                    // Verificar disponibilidad
+                    const isAvailable = await Sharing.isAvailableAsync();
+                    if (!isAvailable) {
+                      Alert.alert('Error', 'La función de compartir no está disponible');
+                      return;
+                    }
+                    
+                    // Abrir menú de compartir con el PDF
+                    await Sharing.shareAsync(simpleFileUri, {
                       mimeType: 'application/pdf',
-                      dialogTitle: `Compartir Reporte ${cleanReportNum}`,
+                      dialogTitle: `Reporte ${cleanReportNum}`,
                       UTI: 'com.adobe.pdf'
                     });
                     
                     console.log('✅ Menú de compartir abierto');
                     
-                  } catch (shareError: any) {
-                    console.error('❌ Error al compartir:', shareError);
-                    Alert.alert('Error', `No se pudo compartir el PDF: ${shareError.message}`);
+                    // Limpiar después
+                    setTimeout(async () => {
+                      try {
+                        await FileSystem.deleteAsync(simpleFileUri, { idempotent: true });
+                        await FileSystem.deleteAsync(downloadResult.uri, { idempotent: true });
+                        console.log('🗑️  Archivos temporales eliminados');
+                      } catch (e) {
+                        console.log('⚠️  No se pudo eliminar archivos temporales');
+                      }
+                    }, 10000);
+                    
+                  } catch (error: any) {
+                    console.error('❌ Error al compartir PDF:', error);
+                    Alert.alert('Error', `No se pudo compartir el PDF: ${error.message}`);
                   }
                 }
               },
               {
-                text: 'Enviar Resumen (texto)',
-                onPress: () => sendReportAsText(report)
-              },
-              {
                 text: 'Cancelar',
-                style: 'cancel'
+                style: 'cancel',
+                onPress: () => {
+                  // Limpiar archivos si cancela
+                  setTimeout(async () => {
+                    try {
+                      await FileSystem.deleteAsync(simpleFileUri, { idempotent: true });
+                      await FileSystem.deleteAsync(downloadResult.uri, { idempotent: true });
+                    } catch (e) {}
+                  }, 1000);
+                }
               }
             ]
           );
+          
         } else {
-          // Sin número de WhatsApp, solo mostrar menú de compartir
+          // No hay número, mostrar opciones generales
           Alert.alert(
-            '✅ PDF Generado',
+            '✅ PDF Listo',
             `El reporte está listo (${fileSizeMB} MB)\n\n¿Cómo deseas compartirlo?`,
             [
               {
@@ -383,17 +462,33 @@ export default function ReportHistoryScreen() {
                   try {
                     console.log('📤 Abriendo menú de compartir...');
                     
-                    await Sharing.shareAsync(downloadResult.uri, {
+                    // Crear copia con nombre simple (sin caracteres especiales)
+                    const simpleFileName = `Reporte_${cleanReportNum}.pdf`;
+                    const simpleFileUri = `${FileSystem.cacheDirectory}${simpleFileName}`;
+                    await FileSystem.copyAsync({
+                      from: downloadResult.uri,
+                      to: simpleFileUri
+                    });
+                    
+                    await Sharing.shareAsync(simpleFileUri, {
                       mimeType: 'application/pdf',
-                      dialogTitle: `Compartir Reporte ${cleanReportNum}`,
+                      dialogTitle: `Compartir Reporte ${reportNum}`,
                       UTI: 'com.adobe.pdf'
                     });
                     
                     console.log('✅ PDF compartido');
                     
+                    // Limpiar después
+                    setTimeout(async () => {
+                      await FileSystem.deleteAsync(simpleFileUri, { idempotent: true });
+                    }, 5000);
+                    
                   } catch (shareError: any) {
                     console.error('❌ Error al compartir:', shareError);
-                    Alert.alert('Error', `No se pudo compartir el PDF: ${shareError.message}`);
+                    Alert.alert(
+                      'Error',
+                      `No se pudo abrir el menú de compartir.\n\nError: ${shareError.message}`
+                    );
                   }
                 }
               },
@@ -410,23 +505,38 @@ export default function ReportHistoryScreen() {
         }
         
       } catch (error: any) {
-        console.error('❌ Error al generar PDF:', error);
+        console.error('❌ Error completo:', error);
+        console.error('   Nombre:', error.name);
         console.error('   Mensaje:', error.message);
+        if (error.stack) console.error('   Stack:', error.stack);
         
-        setIsDownloading(false);
+        // Mensajes más específicos según el error
+        let errorMessage = 'No se pudo descargar el PDF del servidor.';
+        
+        if (error.message.includes('Tiempo de espera')) {
+          errorMessage = 'El servidor tardó demasiado en responder. Verifica tu conexión a internet.';
+        } else if (error.message.includes('Network request failed')) {
+          errorMessage = 'Error de conexión. Verifica tu internet y que el servidor esté disponible.';
+        } else if (error.message.includes('HTTP 404')) {
+          errorMessage = 'El PDF no se encontró en el servidor. Es posible que el reporte no tenga PDF generado.';
+        } else if (error.message.includes('HTTP 500')) {
+          errorMessage = 'Error en el servidor al generar el PDF. Intenta de nuevo más tarde.';
+        } else if (error.message.includes('PDF vacío')) {
+          errorMessage = 'El PDF se generó pero está vacío. Contacta al administrador.';
+        }
         
         Alert.alert(
-          'Error al generar PDF',
-          `No se pudo descargar el PDF del servidor.\n\nError: ${error.message}\n\n¿Deseas compartir como texto?`,
+          'No se pudo cargar el PDF',
+          `${errorMessage}\n\n¿Deseas compartir el reporte como texto por WhatsApp?`,
           [
             { text: 'Cancelar', style: 'cancel' },
-            { text: 'Compartir como Texto', onPress: () => sendReportAsText(report) }
+            { text: '💬 Enviar como Texto', onPress: () => sendReportAsText(report) }
           ]
         );
       }
     } catch (error) {
-      console.error('Error:', error);
-      Alert.alert('Error', 'Ocurrió un error al compartir el reporte');
+      console.error('❌ Error general:', error);
+      Alert.alert('Error', 'Ocurrió un error inesperado al compartir el reporte');
     }
   };
 
@@ -959,32 +1069,6 @@ export default function ReportHistoryScreen() {
           </View>
         )}
       </Modal>
-
-      {/* Modal de Progreso de Descarga */}
-      <Modal
-        animationType="fade"
-        transparent={true}
-        visible={isDownloading}
-        onRequestClose={() => {}}
-      >
-        <View style={styles.progressModalOverlay}>
-          <View style={styles.progressModalContainer}>
-            <Ionicons name="document-text" size={48} color={Colors.primary.blue} />
-            <Text style={styles.progressTitle}>Generando PDF</Text>
-            <Text style={styles.progressSubtitle}>
-              {downloadProgress < 1 ? 'Descargando del servidor...' : 'Preparando archivo...'}
-            </Text>
-            
-            <View style={styles.progressBarContainer}>
-              <View style={[styles.progressBar, { width: `${downloadProgress * 100}%` }]} />
-            </View>
-            
-            <Text style={styles.progressPercentage}>
-              {Math.round(downloadProgress * 100)}%
-            </Text>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -1388,56 +1472,6 @@ const styles = StyleSheet.create({
   orderTotalAmount: {
     fontSize: 20,
     fontWeight: '700',
-    color: Colors.primary.blue,
-  },
-  progressModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  progressModalContainer: {
-    backgroundColor: 'white',
-    borderRadius: 16,
-    padding: 30,
-    alignItems: 'center',
-    width: '80%',
-    maxWidth: 300,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  progressTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1a1a1a',
-    marginTop: 15,
-    marginBottom: 5,
-  },
-  progressSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  progressBarContainer: {
-    width: '100%',
-    height: 8,
-    backgroundColor: '#e0e0e0',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 15,
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: Colors.primary.blue,
-    borderRadius: 4,
-  },
-  progressPercentage: {
-    fontSize: 18,
-    fontWeight: '600',
     color: Colors.primary.blue,
   },
 });

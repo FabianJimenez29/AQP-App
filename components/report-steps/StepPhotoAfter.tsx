@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Image,
   Alert,
+  Platform,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
@@ -13,10 +14,19 @@ import { updateCurrentReport } from '../../store/reportSlice';
 
 export default function StepPhotoAfter() {
   const [photo, setPhoto] = useState<string | null>(null);
+  const [hasPermission, setHasPermission] = useState<boolean>(true);
   const { currentReport } = useAppSelector((state) => state.report);
   const dispatch = useAppDispatch();
 
   useEffect(() => {
+    (async () => {
+      console.log('🎥 Verificando permisos de cámara (After)...');
+      // Verificar permisos en iOS
+      const { status } = await ImagePicker.getCameraPermissionsAsync();
+      console.log('📸 Estado de permiso de cámara (After):', status);
+      setHasPermission(status === 'granted');
+    })();
+
     if (currentReport?.afterPhoto) {
       setPhoto(currentReport.afterPhoto);
     }
@@ -24,20 +34,52 @@ export default function StepPhotoAfter() {
 
   const takePhoto = async () => {
     try {
+      console.log('📷 Intentando abrir cámara (After)...');
+      
+      // Verificar permisos antes de abrir la cámara
+      const { status } = await ImagePicker.getCameraPermissionsAsync();
+      console.log('🔍 Estado actual de permisos (After):', status);
+      
+      if (status !== 'granted') {
+        console.log('❌ Permisos no otorgados, solicitando...');
+        const { status: newStatus } = await ImagePicker.requestCameraPermissionsAsync();
+        
+        if (newStatus !== 'granted') {
+          Alert.alert(
+            'Permiso Denegado',
+            'Necesitas habilitar el acceso a la cámara en la configuración para tomar fotos.',
+            [{ text: 'OK' }]
+          );
+          return;
+        }
+      }
+
+      console.log('✅ Abriendo cámara (After)...');
+
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [4, 3],
         quality: 0.8,
+        exif: false,
       });
 
-      if (!result.canceled && result.assets[0]) {
+      console.log('📱 Resultado de la cámara (After):', result);
+
+      if (!result.canceled && result.assets && result.assets[0]) {
         const photoUri = result.assets[0].uri;
+        console.log('✅ Foto tomada (After):', photoUri);
         setPhoto(photoUri);
         dispatch(updateCurrentReport({ afterPhoto: photoUri }));
+      } else {
+        console.log('❌ Usuario canceló o no hay foto (After)');
       }
     } catch (error) {
-      Alert.alert('Error', 'No se pudo tomar la foto');
+      console.error('💥 Error al tomar foto (After):', error);
+      Alert.alert(
+        'Error', 
+        `No se pudo tomar la foto: ${error instanceof Error ? error.message : 'Error desconocido'}`
+      );
     }
   };
 

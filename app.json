@@ -2,7 +2,7 @@
   "expo": {
     "name": "AquaPool Blue",
     "slug": "aquapool-app",
-    "version": "1.0.12",
+    "version": "1.0.13",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "aqpapp",
@@ -20,7 +20,9 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.aquapool.app",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Esta aplicación necesita acceso a la cámara para tomar fotos del estado de las piscinas antes y después del mantenimiento.",
+        "NSPhotoLibraryUsageDescription": "Esta aplicación necesita acceso a tu galería de fotos para guardar y acceder a las fotos de los reportes."
       }
     },
     "android": {
@@ -44,6 +46,18 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Esta aplicación necesita acceso a la cámara para tomar fotos del estado de las piscinas antes y después del mantenimiento."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Esta aplicación necesita acceso a tu galería de fotos para guardar y acceder a las fotos de los reportes."
+        }
+      ],
       [
         "expo-splash-screen",
         {
