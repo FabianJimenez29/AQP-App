@@ -11,7 +11,7 @@ interface UpdateInfo {
 }
 
 class UpdateService {
-  private currentVersion = '1.0.11'; 
+  private currentVersion = '1.0.12'; 
   private checkInterval: NodeJS.Timeout | null = null;
   private isUpdating = false;
 
@@ -121,34 +121,79 @@ ${updateInfo.releaseNotes || 'Mejoras y correcciones'}
     try {
       this.isUpdating = true;
 
+      console.log('📥 Iniciando descarga de actualización...');
+      console.log('   URL:', updateInfo.downloadUrl);
+
       Alert.alert(
-        'Descargando actualización',
-        'Por favor espera...',
+        '📥 Descargando',
+        'Descargando actualización...\nPuede tardar unos segundos.',
         [],
         { cancelable: false }
       );
 
       const apkPath = `${FileSystem.documentDirectory}update.apk`;
+      console.log('   Guardando en:', apkPath);
 
+      // Eliminar APK anterior si existe
       const fileInfo = await FileSystem.getInfoAsync(apkPath);
       if (fileInfo.exists) {
+        console.log('🗑️  Eliminando APK anterior...');
         await FileSystem.deleteAsync(apkPath);
       }
 
+      // Descargar el nuevo APK
       const downloadResult = await FileSystem.downloadAsync(
         updateInfo.downloadUrl,
         apkPath
       );
 
+      console.log('📥 Descarga completada. Status:', downloadResult.status);
+
       if (downloadResult.status !== 200) {
-        throw new Error('Error al descargar la actualización');
+        throw new Error(`Error al descargar (código ${downloadResult.status})`);
       }
 
-      await this.installApk(downloadResult.uri);
-    } catch (error) {
+      // Verificar el archivo descargado
+      const downloadedFileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
+      console.log('📦 Archivo descargado:', downloadedFileInfo);
+
+      if (!downloadedFileInfo.exists) {
+        throw new Error('El archivo no se descargó correctamente');
+      }
+
+      const fileSizeMB = downloadedFileInfo.size 
+        ? (downloadedFileInfo.size / 1024 / 1024).toFixed(2) 
+        : 'desconocido';
+      
+      console.log(`✅ APK listo (${fileSizeMB} MB)`);
+
+      // Cerrar el alert de descarga
       Alert.alert(
-        'Error',
-        'No se pudo descargar la actualización. Intenta nuevamente más tarde.'
+        '✅ Descarga Completa',
+        `APK descargado (${fileSizeMB} MB)\n\nAhora se abrirá el instalador.`,
+        [
+          {
+            text: 'Instalar',
+            onPress: () => this.installApk(downloadResult.uri)
+          }
+        ]
+      );
+
+    } catch (error: any) {
+      console.error('❌ Error en descarga:', error);
+      Alert.alert(
+        'Error al descargar',
+        `No se pudo descargar la actualización.\n\nError: ${error.message}\n\nIntenta nuevamente o descarga el APK manualmente desde GitHub.`,
+        [
+          {
+            text: 'Reintentar',
+            onPress: () => this.downloadAndInstall(updateInfo)
+          },
+          {
+            text: 'Cancelar',
+            style: 'cancel'
+          }
+        ]
       );
     } finally {
       this.isUpdating = false;
@@ -158,20 +203,46 @@ ${updateInfo.releaseNotes || 'Mejoras y correcciones'}
 
   private async installApk(apkUri: string) {
     try {
+      console.log('📦 Instalando APK desde:', apkUri);
+      
+      // Obtener el content URI para Android
       const contentUri = await FileSystem.getContentUriAsync(apkUri);
+      console.log('📦 Content URI:', contentUri);
 
-      await IntentLauncher.startActivityAsync(
-        'android.intent.action.INSTALL_PACKAGE',
-        {
-          data: contentUri,
-          flags: 1,
-          type: 'application/vnd.android.package-archive',
+      // Intentar con Intent Launcher primero
+      try {
+        await IntentLauncher.startActivityAsync(
+          'android.intent.action.INSTALL_PACKAGE',
+          {
+            data: contentUri,
+            flags: 1, // FLAG_GRANT_READ_URI_PERMISSION
+            type: 'application/vnd.android.package-archive',
+          }
+        );
+        console.log('✅ Intent Launcher exitoso');
+      } catch (intentError) {
+        console.log('⚠️ Intent Launcher falló, intentando con Linking...');
+        
+        // Fallback: Usar Linking directamente
+        const fileUrl = contentUri.startsWith('content://') ? contentUri : `file://${apkUri}`;
+        const canOpen = await Linking.canOpenURL(fileUrl);
+        
+        if (canOpen) {
+          await Linking.openURL(fileUrl);
+          console.log('✅ Linking exitoso');
+        } else {
+          throw new Error('No se puede abrir el instalador');
         }
-      );
-    } catch (error) {
-      if (apkUri.startsWith('file://')) {
-        Linking.openURL(apkUri);
       }
+    } catch (error: any) {
+      console.error('❌ Error instalando APK:', error);
+      
+      // Mostrar instrucciones manuales
+      Alert.alert(
+        'Instalación Manual',
+        'No se pudo abrir el instalador automáticamente.\n\nPasos:\n1. Ve a Descargas o Archivos\n2. Busca "update.apk"\n3. Tócalo para instalar\n4. Permite instalación de fuentes desconocidas si te lo pide',
+        [{ text: 'Entendido' }]
+      );
     }
   }
 
