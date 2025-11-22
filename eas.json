@@ -26,6 +26,9 @@
     "production": {
       "android": {
         "buildType": "apk"
+      },
+      "ios": {
+        "buildNumber": "2"
       }
     }
   },

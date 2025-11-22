@@ -35,7 +35,7 @@ export default function UnifiedNewReportScreen() {
   const insets = useSafeAreaInsets();
 
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 6; // Reducido de 8 a 6 (eliminamos step 4 y 6)
+  const totalSteps = 9; // Actualizado: 1-Proyecto, 2-5 Fotos parámetros, 6-Químicos, 7-Equipos, 8-Materiales/Obs, 9-Finalizar
 
   // Projects state
   const [projects, setProjects] = useState<any[]>([]);
@@ -45,8 +45,17 @@ export default function UnifiedNewReportScreen() {
 
   const [clientName, setClientName] = useState('');
   const [location, setLocation] = useState('');
-  const [beforePhoto, setBeforePhoto] = useState<string | null>(null);
-  const [afterPhoto, setAfterPhoto] = useState<string | null>(null);
+  
+  // 5 fotos de parámetros
+  const [photoCloroPh, setPhotoCloroPh] = useState<string | null>(null);
+  const [photoAlcalinidad, setPhotoAlcalinidad] = useState<string | null>(null);
+  const [photoDureza, setPhotoDureza] = useState<string | null>(null);
+  const [photoEstabilizador, setPhotoEstabilizador] = useState<string | null>(null);
+  
+  // Checkboxes para parámetros opcionales
+  const [durezaAplica, setDurezaAplica] = useState(false);
+  const [estabilizadorAplica, setEstabilizadorAplica] = useState(false);
+  const [salAplica, setSalAplica] = useState(false);
   
   // Guardar hora de entrada cuando se inicia el reporte
   const [entryTime, setEntryTime] = useState<string | null>(null);
@@ -97,7 +106,7 @@ export default function UnifiedNewReportScreen() {
     loadProjects();
   }, [token]);
 
-  const handleImagePicker = async (type: 'before' | 'after') => {
+  const handleImagePicker = async (type: 'cloro_ph' | 'alcalinidad' | 'dureza' | 'estabilizador') => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
@@ -106,15 +115,24 @@ export default function UnifiedNewReportScreen() {
     });
 
     if (!result.canceled && result.assets[0]) {
-      if (type === 'before') {
-        setBeforePhoto(result.assets[0].uri);
-      } else {
-        setAfterPhoto(result.assets[0].uri);
+      switch (type) {
+        case 'cloro_ph':
+          setPhotoCloroPh(result.assets[0].uri);
+          break;
+        case 'alcalinidad':
+          setPhotoAlcalinidad(result.assets[0].uri);
+          break;
+        case 'dureza':
+          setPhotoDureza(result.assets[0].uri);
+          break;
+        case 'estabilizador':
+          setPhotoEstabilizador(result.assets[0].uri);
+          break;
       }
     }
   };
 
-  const handleCameraCapture = async (type: 'before' | 'after') => {
+  const handleCameraCapture = async (type: 'cloro_ph' | 'alcalinidad' | 'dureza' | 'estabilizador') => {
     try {
       // IMPORTANTE: Pedir permisos primero en iOS
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -144,10 +162,19 @@ export default function UnifiedNewReportScreen() {
       });
 
       if (!result.canceled && result.assets[0]) {
-        if (type === 'before') {
-          setBeforePhoto(result.assets[0].uri);
-        } else {
-          setAfterPhoto(result.assets[0].uri);
+        switch (type) {
+          case 'cloro_ph':
+            setPhotoCloroPh(result.assets[0].uri);
+            break;
+          case 'alcalinidad':
+            setPhotoAlcalinidad(result.assets[0].uri);
+            break;
+          case 'dureza':
+            setPhotoDureza(result.assets[0].uri);
+            break;
+          case 'estabilizador':
+            setPhotoEstabilizador(result.assets[0].uri);
+            break;
         }
       }
     } catch (error) {
@@ -183,12 +210,20 @@ export default function UnifiedNewReportScreen() {
       Alert.alert('Error', 'Debes seleccionar un proyecto');
       return false;
     }
-    if (!beforePhoto) {
-      Alert.alert('Error', 'La foto antes del mantenimiento es obligatoria');
+    if (!photoCloroPh) {
+      Alert.alert('Error', 'La foto de Cloro y pH es obligatoria');
       return false;
     }
-    if (!afterPhoto) {
-      Alert.alert('Error', 'La foto después del mantenimiento es obligatoria');
+    if (!photoAlcalinidad) {
+      Alert.alert('Error', 'La foto de Alcalinidad es obligatoria');
+      return false;
+    }
+    if (durezaAplica && !photoDureza) {
+      Alert.alert('Error', 'La foto de Dureza es obligatoria cuando aplica');
+      return false;
+    }
+    if (estabilizadorAplica && !photoEstabilizador) {
+      Alert.alert('Error', 'La foto de Estabilizador es obligatoria cuando aplica');
       return false;
     }
     return true;
@@ -209,38 +244,72 @@ export default function UnifiedNewReportScreen() {
               dispatch(setLoading(true));
               dispatch(setError(null));
 
-
               const tempId = `temp_${Date.now()}`;
 
-              let beforePhotoUrl = '';
-              let afterPhotoUrl = '';
-
-              if (beforePhoto) {
+              // Subir foto Cloro/pH
+              let photoCloroPhUrl = '';
+              if (photoCloroPh) {
                 try {
-                  const beforeUpload = await ApiService.uploadImage(
-                    beforePhoto, 
+                  const upload = await ApiService.uploadImage(
+                    photoCloroPh, 
                     token || '', 
-                    `${tempId}_before`
+                    `${tempId}_cloro_ph`
                   );
-                  beforePhotoUrl = beforeUpload.url;
+                  photoCloroPhUrl = upload.url;
                 } catch (uploadError) {
-                  console.error('❌ Error subiendo imagen antes:', uploadError);
-                  Alert.alert('Error', 'No se pudo subir la imagen antes del mantenimiento');
+                  console.error('❌ Error subiendo imagen Cloro/pH:', uploadError);
+                  Alert.alert('Error', 'No se pudo subir la imagen de Cloro/pH');
                   return;
                 }
               }
 
-              if (afterPhoto) {
+              // Subir foto Alcalinidad
+              let photoAlcalinidadUrl = '';
+              if (photoAlcalinidad) {
                 try {
-                  const afterUpload = await ApiService.uploadImage(
-                    afterPhoto, 
+                  const upload = await ApiService.uploadImage(
+                    photoAlcalinidad, 
                     token || '', 
-                    `${tempId}_after`
+                    `${tempId}_alcalinidad`
                   );
-                  afterPhotoUrl = afterUpload.url;
+                  photoAlcalinidadUrl = upload.url;
                 } catch (uploadError) {
-                  console.error('❌ Error subiendo imagen después:', uploadError);
-                  Alert.alert('Error', 'No se pudo subir la imagen después del mantenimiento');
+                  console.error('❌ Error subiendo imagen Alcalinidad:', uploadError);
+                  Alert.alert('Error', 'No se pudo subir la imagen de Alcalinidad');
+                  return;
+                }
+              }
+
+              // Subir foto Dureza (si aplica)
+              let photoDurezaUrl = '';
+              if (photoDureza && durezaAplica) {
+                try {
+                  const upload = await ApiService.uploadImage(
+                    photoDureza, 
+                    token || '', 
+                    `${tempId}_dureza`
+                  );
+                  photoDurezaUrl = upload.url;
+                } catch (uploadError) {
+                  console.error('❌ Error subiendo imagen Dureza:', uploadError);
+                  Alert.alert('Error', 'No se pudo subir la imagen de Dureza');
+                  return;
+                }
+              }
+
+              // Subir foto Estabilizador (si aplica)
+              let photoEstabilizadorUrl = '';
+              if (photoEstabilizador && estabilizadorAplica) {
+                try {
+                  const upload = await ApiService.uploadImage(
+                    photoEstabilizador, 
+                    token || '', 
+                    `${tempId}_estabilizador`
+                  );
+                  photoEstabilizadorUrl = upload.url;
+                } catch (uploadError) {
+                  console.error('❌ Error subiendo imagen Estabilizador:', uploadError);
+                  Alert.alert('Error', 'No se pudo subir la imagen de Estabilizador');
                   return;
                 }
               }
@@ -250,11 +319,19 @@ export default function UnifiedNewReportScreen() {
                 clientName: selectedProject.client_name,
                 location: selectedProject.location,
                 technician: user?.name || 'Técnico',
-                entryTime: entryTime || new Date().toISOString(), // Usar hora guardada
-                exitTime: new Date().toISOString(), // Hora actual de finalización
+                entryTime: entryTime || new Date().toISOString(),
+                exitTime: new Date().toISOString(),
                 userId: user?.id || 'unknown',
-                beforePhoto: beforePhotoUrl, 
-                afterPhoto: afterPhotoUrl,  
+                // Nuevas 4 fotos
+                photoCloroPh: photoCloroPhUrl,
+                photoAlcalinidad: photoAlcalinidadUrl,
+                photoDureza: photoDurezaUrl,
+                photoEstabilizador: photoEstabilizadorUrl,
+                // Flags de parámetros opcionales
+                durezaAplica: durezaAplica,
+                estabilizadorAplica: estabilizadorAplica,
+                salAplica: salAplica,
+                // Datos existentes
                 parametersBefore,
                 chemicals,
                 equipmentCheck,
@@ -267,6 +344,12 @@ export default function UnifiedNewReportScreen() {
               console.log('⏰ Enviando reporte con horas:');
               console.log('   Entrada:', new Date(entryTime || '').toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' }));
               console.log('   Salida:', new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' }));
+              console.log('📸 Fotos incluidas:', {
+                photoCloroPh: !!photoCloroPhUrl,
+                photoAlcalinidad: !!photoAlcalinidadUrl,
+                photoDureza: !!photoDurezaUrl,
+                photoEstabilizador: !!photoEstabilizadorUrl,
+              });
 
               const savedReport = await ApiService.createReport(reportData as any, token || '');
               
@@ -368,13 +451,29 @@ export default function UnifiedNewReportScreen() {
 
   const canProceedToNextStep = () => {
     switch(currentStep) {
-      case 1: return selectedProject !== null;
-      case 2: return beforePhoto !== null;
-      case 3: return Object.values(parametersBefore).every(v => v > 0);
-      case 4: return true; // Químicos (opcional)
-      case 5: return true; // Notas (opcional)
-      case 6: return afterPhoto !== null;
-      default: return false;
+      case 1: // Proyecto
+        return selectedProject !== null;
+      case 2: // Cloro y pH + foto
+        return photoCloroPh !== null && parametersBefore.cl > 0 && parametersBefore.ph > 0 && parametersBefore.temperature > 0;
+      case 3: // Alcalinidad + foto
+        return photoAlcalinidad !== null && parametersBefore.alk > 0;
+      case 4: // Dureza (opcional)
+        if (!durezaAplica) return true; // Si no aplica, puede continuar
+        return photoDureza !== null && parametersBefore.hardness > 0;
+      case 5: // Estabilizador (opcional)
+        if (!estabilizadorAplica) return true; // Si no aplica, puede continuar
+        return photoEstabilizador !== null && parametersBefore.stabilizer > 0;
+      case 6: // Sal (opcional, sin foto)
+        if (!salAplica) return true; // Si no aplica, puede continuar
+        return parametersBefore.salt > 0;
+      case 7: // Químicos (opcional)
+        return true;
+      case 8: // Equipos (opcional)
+        return true;
+      case 9: // Materiales y observaciones (opcional)
+        return true;
+      default: 
+        return false;
     }
   };
 
@@ -418,13 +517,14 @@ export default function UnifiedNewReportScreen() {
           <View style={styles.stepIndicatorsContainer}>
             {[
               { num: 1, icon: 'home', label: 'Proyecto' },
-              { num: 2, icon: 'camera', label: 'Antes' },
-              { num: 3, icon: 'analytics', label: 'Inicial' },
-              { num: 4, icon: 'flask', label: 'Químicos' },
-              { num: 5, icon: 'construct', label: 'Equipos' },
-              { num: 6, icon: 'analytics', label: 'Final' },
-              { num: 7, icon: 'clipboard', label: 'Notas' },
-              { num: 8, icon: 'camera', label: 'Después' },
+              { num: 2, icon: 'flask-outline', label: 'Cl/pH' },
+              { num: 3, icon: 'water', label: 'Alcal.' },
+              { num: 4, icon: 'diamond', label: 'Dureza' },
+              { num: 5, icon: 'shield-checkmark', label: 'Estab.' },
+              { num: 6, icon: 'color-filter', label: 'Sal' },
+              { num: 7, icon: 'flask', label: 'Químicos' },
+              { num: 8, icon: 'construct', label: 'Equipos' },
+              { num: 9, icon: 'clipboard', label: 'Final' },
             ].map((step) => (
               <View
                 key={step.num}
@@ -569,22 +669,76 @@ export default function UnifiedNewReportScreen() {
           {currentStep === 2 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
-                <View style={[styles.stepIconLarge, { backgroundColor: '#fff3e0' }]}>
-                  <Ionicons name="camera" size={32} color="#FF9800" />
+                <View style={[styles.stepIconLarge, { backgroundColor: '#e8f5e9' }]}>
+                  <Ionicons name="flask-outline" size={32} color="#4CAF50" />
                 </View>
-                <Text style={styles.stepTitle}>Foto Antes</Text>
+                <Text style={styles.stepTitle}>Cloro y pH</Text>
                 <Text style={styles.stepDescription}>
-                  Captura el estado inicial de la piscina antes del mantenimiento
+                  Mide cloro libre, pH y temperatura del agua
                 </Text>
               </View>
 
               <View style={styles.card}>
-                {beforePhoto ? (
+                <View style={styles.parameterRow}>
+                  <View style={styles.parameterIcon}>
+                    <Ionicons name="water" size={20} color="#0066CC" />
+                  </View>
+                  <View style={styles.parameterContent}>
+                    <Text style={styles.parameterLabel}>Cloro Libre (ppm)</Text>
+                    <TextInput
+                      style={styles.parameterInput}
+                      value={parametersBeforeStr.cl}
+                      onChangeText={(value) => handleParameterChange('before', 'cl', value)}
+                      keyboardType="decimal-pad"
+                      placeholder="0.0"
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.parameterRow}>
+                  <View style={styles.parameterIcon}>
+                    <Ionicons name="flask" size={20} color="#0066CC" />
+                  </View>
+                  <View style={styles.parameterContent}>
+                    <Text style={styles.parameterLabel}>pH</Text>
+                    <TextInput
+                      style={styles.parameterInput}
+                      value={parametersBeforeStr.ph}
+                      onChangeText={(value) => handleParameterChange('before', 'ph', value)}
+                      keyboardType="decimal-pad"
+                      placeholder="0.0"
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.parameterRow}>
+                  <View style={styles.parameterIcon}>
+                    <Ionicons name="thermometer" size={20} color="#0066CC" />
+                  </View>
+                  <View style={styles.parameterContent}>
+                    <Text style={styles.parameterLabel}>Temperatura (°C)</Text>
+                    <TextInput
+                      style={styles.parameterInput}
+                      value={parametersBeforeStr.temperature}
+                      onChangeText={(value) => handleParameterChange('before', 'temperature', value)}
+                      keyboardType="decimal-pad"
+                      placeholder="0.0"
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.photoSectionTitle}>📸 Foto de Medición</Text>
+                {photoCloroPh ? (
                   <View style={styles.photoPreview}>
-                    <Image source={{ uri: beforePhoto }} style={styles.photoImage} />
+                    <Image source={{ uri: photoCloroPh }} style={styles.photoImage} />
                     <TouchableOpacity 
                       style={styles.photoRemove}
-                      onPress={() => setBeforePhoto(null)}
+                      onPress={() => setPhotoCloroPh(null)}
                     >
                       <Ionicons name="close-circle" size={32} color="#f44336" />
                     </TouchableOpacity>
@@ -600,7 +754,7 @@ export default function UnifiedNewReportScreen() {
                     </View>
                     <Text style={styles.photoEmptyTitle}>Sin foto</Text>
                     <Text style={styles.photoEmptyText}>
-                      Toma una foto del estado inicial de la piscina
+                      Toma una foto de la medición de cloro y pH
                     </Text>
                   </View>
                 )}
@@ -608,7 +762,7 @@ export default function UnifiedNewReportScreen() {
                 <View style={styles.photoActions}>
                   <TouchableOpacity 
                     style={styles.photoActionPrimary}
-                    onPress={() => handleCameraCapture('before')}
+                    onPress={() => handleCameraCapture('cloro_ph')}
                   >
                     <Ionicons name="camera" size={24} color="white" />
                     <Text style={styles.photoActionText}>Tomar Foto</Text>
@@ -616,7 +770,7 @@ export default function UnifiedNewReportScreen() {
                   
                   <TouchableOpacity 
                     style={styles.photoActionSecondary}
-                    onPress={() => handleImagePicker('before')}
+                    onPress={() => handleImagePicker('cloro_ph')}
                   >
                     <Ionicons name="images" size={24} color="#0066CC" />
                     <Text style={styles.photoActionTextSecondary}>Galería</Text>
@@ -629,39 +783,329 @@ export default function UnifiedNewReportScreen() {
           {currentStep === 3 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
-                <View style={[styles.stepIconLarge, { backgroundColor: '#e3f2fd' }]}>
-                  <Ionicons name="analytics" size={32} color="#2196F3" />
+                <View style={[styles.stepIconLarge, { backgroundColor: '#e1f5fe' }]}>
+                  <Ionicons name="water" size={32} color="#0288D1" />
                 </View>
-                <Text style={styles.stepTitle}>Parámetros</Text>
+                <Text style={styles.stepTitle}>Alcalinidad</Text>
                 <Text style={styles.stepDescription}>
-                  Mide y registra los parámetros del agua
+                  Mide y registra la alcalinidad del agua
                 </Text>
               </View>
 
               <View style={styles.card}>
-                {parameterConfigs.map((param, index) => (
-                  <View key={param.key} style={styles.parameterRow}>
+                <View style={styles.parameterRow}>
+                  <View style={styles.parameterIcon}>
+                    <Ionicons name="analytics" size={20} color="#0066CC" />
+                  </View>
+                  <View style={styles.parameterContent}>
+                    <Text style={styles.parameterLabel}>Alcalinidad (ppm)</Text>
+                    <TextInput
+                      style={styles.parameterInput}
+                      value={parametersBeforeStr.alk}
+                      onChangeText={(value) => handleParameterChange('before', 'alk', value)}
+                      keyboardType="decimal-pad"
+                      placeholder="0.0"
+                      placeholderTextColor="#999"
+                    />
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.photoSectionTitle}>📸 Foto de Medición</Text>
+                {photoAlcalinidad ? (
+                  <View style={styles.photoPreview}>
+                    <Image source={{ uri: photoAlcalinidad }} style={styles.photoImage} />
+                    <TouchableOpacity 
+                      style={styles.photoRemove}
+                      onPress={() => setPhotoAlcalinidad(null)}
+                    >
+                      <Ionicons name="close-circle" size={32} color="#f44336" />
+                    </TouchableOpacity>
+                    <View style={styles.photoOverlay}>
+                      <Ionicons name="checkmark-circle" size={48} color="#4caf50" />
+                      <Text style={styles.photoOverlayText}>Foto capturada</Text>
+                    </View>
+                  </View>
+                ) : (
+                  <View style={styles.photoEmpty}>
+                    <View style={styles.photoEmptyIcon}>
+                      <Ionicons name="camera-outline" size={64} color="#ccc" />
+                    </View>
+                    <Text style={styles.photoEmptyTitle}>Sin foto</Text>
+                    <Text style={styles.photoEmptyText}>
+                      Toma una foto de la medición de alcalinidad
+                    </Text>
+                  </View>
+                )}
+
+                <View style={styles.photoActions}>
+                  <TouchableOpacity 
+                    style={styles.photoActionPrimary}
+                    onPress={() => handleCameraCapture('alcalinidad')}
+                  >
+                    <Ionicons name="camera" size={24} color="white" />
+                    <Text style={styles.photoActionText}>Tomar Foto</Text>
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity 
+                    style={styles.photoActionSecondary}
+                    onPress={() => handleImagePicker('alcalinidad')}
+                  >
+                    <Ionicons name="images" size={24} color="#0066CC" />
+                    <Text style={styles.photoActionTextSecondary}>Galería</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {currentStep === 4 && (
+            <View style={styles.stepContainer}>
+              <View style={styles.stepHeader}>
+                <View style={[styles.stepIconLarge, { backgroundColor: '#fce4ec' }]}>
+                  <Ionicons name="diamond" size={32} color="#C2185B" />
+                </View>
+                <Text style={styles.stepTitle}>Dureza (Opcional)</Text>
+                <Text style={styles.stepDescription}>
+                  Marca si aplica dureza en este mantenimiento
+                </Text>
+              </View>
+
+              <View style={styles.card}>
+                <TouchableOpacity 
+                  style={[styles.checkboxRow, durezaAplica && styles.checkboxRowActive]}
+                  onPress={() => setDurezaAplica(!durezaAplica)}
+                >
+                  <View style={[styles.checkbox, durezaAplica && styles.checkboxChecked]}>
+                    {durezaAplica && <Ionicons name="checkmark" size={20} color="white" />}
+                  </View>
+                  <Text style={[styles.checkboxLabel, durezaAplica && styles.checkboxLabelActive]}>
+                    Aplica medición de dureza
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {durezaAplica && (
+                <>
+                  <View style={styles.card}>
+                    <View style={styles.parameterRow}>
+                      <View style={styles.parameterIcon}>
+                        <Ionicons name="diamond" size={20} color="#0066CC" />
+                      </View>
+                      <View style={styles.parameterContent}>
+                        <Text style={styles.parameterLabel}>Dureza (ppm)</Text>
+                        <TextInput
+                          style={styles.parameterInput}
+                          value={parametersBeforeStr.hardness}
+                          onChangeText={(value) => handleParameterChange('before', 'hardness', value)}
+                          keyboardType="decimal-pad"
+                          placeholder="0.0"
+                          placeholderTextColor="#999"
+                        />
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.card}>
+                    <Text style={styles.photoSectionTitle}>📸 Foto de Medición</Text>
+                    {photoDureza ? (
+                      <View style={styles.photoPreview}>
+                        <Image source={{ uri: photoDureza }} style={styles.photoImage} />
+                        <TouchableOpacity 
+                          style={styles.photoRemove}
+                          onPress={() => setPhotoDureza(null)}
+                        >
+                          <Ionicons name="close-circle" size={32} color="#f44336" />
+                        </TouchableOpacity>
+                        <View style={styles.photoOverlay}>
+                          <Ionicons name="checkmark-circle" size={48} color="#4caf50" />
+                          <Text style={styles.photoOverlayText}>Foto capturada</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.photoEmpty}>
+                        <View style={styles.photoEmptyIcon}>
+                          <Ionicons name="camera-outline" size={64} color="#ccc" />
+                        </View>
+                        <Text style={styles.photoEmptyTitle}>Sin foto</Text>
+                        <Text style={styles.photoEmptyText}>
+                          Toma una foto de la medición de dureza
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={styles.photoActions}>
+                      <TouchableOpacity 
+                        style={styles.photoActionPrimary}
+                        onPress={() => handleCameraCapture('dureza')}
+                      >
+                        <Ionicons name="camera" size={24} color="white" />
+                        <Text style={styles.photoActionText}>Tomar Foto</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={styles.photoActionSecondary}
+                        onPress={() => handleImagePicker('dureza')}
+                      >
+                        <Ionicons name="images" size={24} color="#0066CC" />
+                        <Text style={styles.photoActionTextSecondary}>Galería</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </>
+              )}
+            </View>
+          )}
+
+          {currentStep === 5 && (
+            <View style={styles.stepContainer}>
+              <View style={styles.stepHeader}>
+                <View style={[styles.stepIconLarge, { backgroundColor: '#fff3e0' }]}>
+                  <Ionicons name="shield-checkmark" size={32} color="#F57C00" />
+                </View>
+                <Text style={styles.stepTitle}>Estabilizador (Opcional)</Text>
+                <Text style={styles.stepDescription}>
+                  Marca si aplica estabilizador en este mantenimiento
+                </Text>
+              </View>
+
+              <View style={styles.card}>
+                <TouchableOpacity 
+                  style={[styles.checkboxRow, estabilizadorAplica && styles.checkboxRowActive]}
+                  onPress={() => setEstabilizadorAplica(!estabilizadorAplica)}
+                >
+                  <View style={[styles.checkbox, estabilizadorAplica && styles.checkboxChecked]}>
+                    {estabilizadorAplica && <Ionicons name="checkmark" size={20} color="white" />}
+                  </View>
+                  <Text style={[styles.checkboxLabel, estabilizadorAplica && styles.checkboxLabelActive]}>
+                    Aplica medición de estabilizador
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {estabilizadorAplica && (
+                <>
+                  <View style={styles.card}>
+                    <View style={styles.parameterRow}>
+                      <View style={styles.parameterIcon}>
+                        <Ionicons name="shield-checkmark" size={20} color="#0066CC" />
+                      </View>
+                      <View style={styles.parameterContent}>
+                        <Text style={styles.parameterLabel}>Estabilizador (ppm)</Text>
+                        <TextInput
+                          style={styles.parameterInput}
+                          value={parametersBeforeStr.stabilizer}
+                          onChangeText={(value) => handleParameterChange('before', 'stabilizer', value)}
+                          keyboardType="decimal-pad"
+                          placeholder="0.0"
+                          placeholderTextColor="#999"
+                        />
+                      </View>
+                    </View>
+                  </View>
+
+                  <View style={styles.card}>
+                    <Text style={styles.photoSectionTitle}>📸 Foto de Medición</Text>
+                    {photoEstabilizador ? (
+                      <View style={styles.photoPreview}>
+                        <Image source={{ uri: photoEstabilizador }} style={styles.photoImage} />
+                        <TouchableOpacity 
+                          style={styles.photoRemove}
+                          onPress={() => setPhotoEstabilizador(null)}
+                        >
+                          <Ionicons name="close-circle" size={32} color="#f44336" />
+                        </TouchableOpacity>
+                        <View style={styles.photoOverlay}>
+                          <Ionicons name="checkmark-circle" size={48} color="#4caf50" />
+                          <Text style={styles.photoOverlayText}>Foto capturada</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.photoEmpty}>
+                        <View style={styles.photoEmptyIcon}>
+                          <Ionicons name="camera-outline" size={64} color="#ccc" />
+                        </View>
+                        <Text style={styles.photoEmptyTitle}>Sin foto</Text>
+                        <Text style={styles.photoEmptyText}>
+                          Toma una foto de la medición de estabilizador
+                        </Text>
+                      </View>
+                    )}
+
+                    <View style={styles.photoActions}>
+                      <TouchableOpacity 
+                        style={styles.photoActionPrimary}
+                        onPress={() => handleCameraCapture('estabilizador')}
+                      >
+                        <Ionicons name="camera" size={24} color="white" />
+                        <Text style={styles.photoActionText}>Tomar Foto</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={styles.photoActionSecondary}
+                        onPress={() => handleImagePicker('estabilizador')}
+                      >
+                        <Ionicons name="images" size={24} color="#0066CC" />
+                        <Text style={styles.photoActionTextSecondary}>Galería</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </>
+              )}
+            </View>
+          )}
+
+          {currentStep === 6 && (
+            <View style={styles.stepContainer}>
+              <View style={styles.stepHeader}>
+                <View style={[styles.stepIconLarge, { backgroundColor: '#e3f2fd' }]}>
+                  <Ionicons name="color-filter" size={32} color="#00ACC1" />
+                </View>
+                <Text style={styles.stepTitle}>Sal (Opcional)</Text>
+                <Text style={styles.stepDescription}>
+                  Marca si aplica sal en este mantenimiento
+                </Text>
+              </View>
+
+              <View style={styles.card}>
+                <TouchableOpacity 
+                  style={[styles.checkboxRow, salAplica && styles.checkboxRowActive]}
+                  onPress={() => setSalAplica(!salAplica)}
+                >
+                  <View style={[styles.checkbox, salAplica && styles.checkboxChecked]}>
+                    {salAplica && <Ionicons name="checkmark" size={20} color="white" />}
+                  </View>
+                  <Text style={[styles.checkboxLabel, salAplica && styles.checkboxLabelActive]}>
+                    Aplica medición de sal
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {salAplica && (
+                <View style={styles.card}>
+                  <View style={styles.parameterRow}>
                     <View style={styles.parameterIcon}>
-                      <Ionicons name={param.icon as any} size={20} color="#0066CC" />
+                      <Ionicons name="color-filter" size={20} color="#0066CC" />
                     </View>
                     <View style={styles.parameterContent}>
-                      <Text style={styles.parameterLabel}>{param.label}</Text>
+                      <Text style={styles.parameterLabel}>Sal (ppm)</Text>
                       <TextInput
                         style={styles.parameterInput}
-                        value={parametersBeforeStr[param.key as keyof Parameters]}
-                        onChangeText={(value) => handleParameterChange('before', param.key as keyof Parameters, value)}
+                        value={parametersBeforeStr.salt}
+                        onChangeText={(value) => handleParameterChange('before', 'salt', value)}
                         keyboardType="decimal-pad"
                         placeholder="0.0"
                         placeholderTextColor="#999"
                       />
                     </View>
                   </View>
-                ))}
-              </View>
+                </View>
+              )}
             </View>
           )}
 
-          {currentStep === 4 && (
+          {currentStep === 7 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
                 <View style={[styles.stepIconLarge, { backgroundColor: '#f3e5f5' }]}>
@@ -694,7 +1138,7 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {currentStep === 5 && (
+          {currentStep === 8 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
                 <View style={[styles.stepIconLarge, { backgroundColor: '#fff8e1' }]}>
@@ -746,7 +1190,7 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
 
-          {currentStep === 5 && (
+          {currentStep === 9 && (
             <View style={styles.stepContainer}>
               <View style={styles.stepHeader}>
                 <View style={[styles.stepIconLarge, { backgroundColor: '#e8f5e9' }]}>
@@ -806,101 +1250,6 @@ export default function UnifiedNewReportScreen() {
               </View>
             </View>
           )}
-
-          {currentStep === 6 && (
-            <View style={styles.stepContainer}>
-              <View style={styles.stepHeader}>
-                <View style={[styles.stepIconLarge, { backgroundColor: '#e8f5e9' }]}>
-                  <Ionicons name="camera" size={32} color="#4caf50" />
-                </View>
-                <Text style={styles.stepTitle}>Foto Después</Text>
-                <Text style={styles.stepDescription}>
-                  Captura el resultado final del mantenimiento
-                </Text>
-              </View>
-
-              <View style={styles.card}>
-                {afterPhoto ? (
-                  <View style={styles.photoPreview}>
-                    <Image source={{ uri: afterPhoto }} style={styles.photoImage} />
-                    <TouchableOpacity 
-                      style={styles.photoRemove}
-                      onPress={() => setAfterPhoto(null)}
-                    >
-                      <Ionicons name="close-circle" size={32} color="#f44336" />
-                    </TouchableOpacity>
-                    <View style={styles.photoOverlay}>
-                      <Ionicons name="checkmark-circle" size={48} color="#4caf50" />
-                      <Text style={styles.photoOverlayText}>Foto capturada</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.photoEmpty}>
-                    <View style={styles.photoEmptyIcon}>
-                      <Ionicons name="camera-outline" size={64} color="#ccc" />
-                    </View>
-                    <Text style={styles.photoEmptyTitle}>Sin foto</Text>
-                    <Text style={styles.photoEmptyText}>
-                      Toma una foto del resultado final
-                    </Text>
-                  </View>
-                )}
-
-                <View style={styles.photoActions}>
-                  <TouchableOpacity 
-                    style={styles.photoActionPrimary}
-                    onPress={() => handleCameraCapture('after')}
-                  >
-                    <Ionicons name="camera" size={24} color="white" />
-                    <Text style={styles.photoActionText}>Tomar Foto</Text>
-                  </TouchableOpacity>
-                  
-                  <TouchableOpacity 
-                    style={styles.photoActionSecondary}
-                    onPress={() => handleImagePicker('after')}
-                  >
-                    <Ionicons name="images" size={24} color="#0066CC" />
-                    <Text style={styles.photoActionTextSecondary}>Galería</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-
-              <View style={styles.summaryCard}>
-                <Text style={styles.summaryTitle}>Resumen del Reporte</Text>
-                {selectedProject && (
-                  <>
-                    <View style={styles.summaryRow}>
-                      <Ionicons name="home" size={16} color="#666" />
-                      <Text style={styles.summaryLabel}>Proyecto:</Text>
-                      <Text style={styles.summaryValue}>{selectedProject.project_name}</Text>
-                    </View>
-                    <View style={styles.summaryRow}>
-                      <Ionicons name="person" size={16} color="#666" />
-                      <Text style={styles.summaryLabel}>Cliente:</Text>
-                      <Text style={styles.summaryValue}>{selectedProject.client_name}</Text>
-                    </View>
-                    <View style={styles.summaryRow}>
-                      <Ionicons name="location" size={16} color="#666" />
-                      <Text style={styles.summaryLabel}>Ubicación:</Text>
-                      <Text style={styles.summaryValue}>{selectedProject.location}</Text>
-                    </View>
-                    {selectedProject.pool_gallons && (
-                      <View style={styles.summaryRow}>
-                        <Ionicons name="water" size={16} color="#666" />
-                        <Text style={styles.summaryLabel}>Galonaje:</Text>
-                        <Text style={styles.summaryValue}>{selectedProject.pool_gallons.toLocaleString()} gal</Text>
-                      </View>
-                    )}
-                  </>
-                )}
-                <View style={styles.summaryRow}>
-                  <Ionicons name="checkmark-done" size={16} color="#666" />
-                  <Text style={styles.summaryLabel}>Pasos completados:</Text>
-                  <Text style={styles.summaryValue}>{currentStep} de {totalSteps}</Text>
-                </View>
-              </View>
-            </View>
-          )}
         </View>
 
         <View style={styles.navigationButtons}>
@@ -943,8 +1292,6 @@ export default function UnifiedNewReportScreen() {
             </TouchableOpacity>
           )}
         </View>
-
-        <View style={{ height: 40 }} />
       </ScrollView>
 
       {/* Project Picker Modal */}
@@ -1862,6 +2209,58 @@ const styles = StyleSheet.create({
   },
   pickerItemPool: {
     fontSize: 12,
+    color: '#0066CC',
+    fontWeight: '600',
+  },
+
+  // Nuevos estilos para fotos y checkboxes
+  photoSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1a1a1a',
+    marginBottom: 12,
+    marginTop: 16,
+  },
+
+  checkboxRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+
+  checkboxRowActive: {
+    backgroundColor: '#e3f2fd',
+    borderColor: '#0066CC',
+  },
+
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#ccc',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  checkboxChecked: {
+    backgroundColor: '#0066CC',
+    borderColor: '#0066CC',
+  },
+
+  checkboxLabel: {
+    fontSize: 16,
+    color: '#666',
+    fontWeight: '500',
+  },
+
+  checkboxLabelActive: {
     color: '#0066CC',
     fontWeight: '600',
   },

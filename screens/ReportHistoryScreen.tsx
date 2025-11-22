@@ -38,8 +38,13 @@ interface Report {
   location: string;
   technician: string;
   created_at: string;
-  before_photo_url?: string;
-  after_photo_url?: string;
+  photo_cloro_ph?: string;
+  photo_alcalinidad?: string;
+  photo_dureza?: string;
+  photo_estabilizador?: string;
+  dureza_aplica?: boolean;
+  estabilizador_aplica?: boolean;
+  sal_aplica?: boolean;
   parameters_before?: {
     cl: number;
     ph: number;
@@ -193,9 +198,12 @@ export default function ReportHistoryScreen() {
   };
 
   const getStatusColor = (report: Report) => {
-    if (report.before_photo_url && report.after_photo_url) {
+    const hasAllRequiredPhotos = report.photo_cloro_ph && report.photo_alcalinidad;
+    const hasSomePhotos = report.photo_cloro_ph || report.photo_alcalinidad || report.photo_dureza || report.photo_estabilizador;
+    
+    if (hasAllRequiredPhotos) {
       return '#4CAF50'; 
-    } else if (report.before_photo_url || report.after_photo_url) {
+    } else if (hasSomePhotos) {
       return '#FF9800'; 
     } else {
       return '#f44336'; 
@@ -203,9 +211,12 @@ export default function ReportHistoryScreen() {
   };
 
   const getStatusText = (report: Report) => {
-    if (report.before_photo_url && report.after_photo_url) {
+    const hasAllRequiredPhotos = report.photo_cloro_ph && report.photo_alcalinidad;
+    const hasSomePhotos = report.photo_cloro_ph || report.photo_alcalinidad || report.photo_dureza || report.photo_estabilizador;
+    
+    if (hasAllRequiredPhotos) {
       return 'Completo';
-    } else if (report.before_photo_url || report.after_photo_url) {
+    } else if (hasSomePhotos) {
       return 'Parcial';
     } else {
       return 'Sin fotos';
@@ -318,29 +329,7 @@ export default function ReportHistoryScreen() {
             `El reporte está listo (${fileSizeMB} MB)\n\n¿Cómo deseas enviarlo?\n\n📱 ${report.project_client_phone}`,
             [
               {
-                text: 'Enviar link por WhatsApp',
-                onPress: () => {
-                  // Enviar link público del PDF por WhatsApp
-                  const pdfPublicUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf/public`;
-                  
-                  let message = `*🏊 REPORTE DE PISCINA #${report.report_number}*\n\n`;
-                  message += `*Proyecto:* ${report.project_name || 'N/A'}\n`;
-                  message += `*Fecha:* ${new Date(report.created_at).toLocaleDateString()}\n\n`;
-                  message += `📄 *Descarga el PDF aquí:*\n${pdfPublicUrl}\n\n`;
-                  message += `_Reporte generado por AquaPool App_`;
-                  
-                  const encodedMessage = encodeURIComponent(message);
-                  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-                  
-                  console.log('📱 Abriendo WhatsApp con link público:', pdfPublicUrl);
-                  
-                  Linking.openURL(whatsappUrl).catch(() => {
-                    Alert.alert('Error', 'No se pudo abrir WhatsApp');
-                  });
-                }
-              },
-              {
-                text: 'Compartir archivo',
+                text: '📄 Compartir archivo PDF',
                 onPress: async () => {
                   try {
                     console.log('📤 Compartiendo archivo PDF...');
@@ -359,6 +348,28 @@ export default function ReportHistoryScreen() {
                     console.error('❌ Error al compartir:', shareError);
                     Alert.alert('Error', `No se pudo compartir el PDF: ${shareError.message}`);
                   }
+                }
+              },
+              {
+                text: '🔗 Enviar link por WhatsApp',
+                onPress: () => {
+                  // Enviar link público del PDF por WhatsApp
+                  const pdfPublicUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf/public`;
+                  
+                  let message = `*🏊 REPORTE DE PISCINA #${report.report_number}*\n\n`;
+                  message += `*Proyecto:* ${report.project_name || 'N/A'}\n`;
+                  message += `*Fecha:* ${new Date(report.created_at).toLocaleDateString()}\n\n`;
+                  message += `📄 *Descarga el PDF aquí:*\n${pdfPublicUrl}\n\n`;
+                  message += `_Reporte generado por AquaPool App_`;
+                  
+                  const encodedMessage = encodeURIComponent(message);
+                  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+                  
+                  console.log('📱 Abriendo WhatsApp con link público:', pdfPublicUrl);
+                  
+                  Linking.openURL(whatsappUrl).catch(() => {
+                    Alert.alert('Error', 'No se pudo abrir WhatsApp');
+                  });
                 }
               },
               {
@@ -645,7 +656,8 @@ export default function ReportHistoryScreen() {
                   <View style={[styles.statusBadge, { backgroundColor: getStatusColor(report) }]}>
                     <Text style={styles.statusText}>{getStatusText(report)}</Text>
                   </View>
-                  {(isValidImageUrl(report.before_photo_url) || isValidImageUrl(report.after_photo_url)) && (
+                  {(isValidImageUrl(report.photo_cloro_ph) || isValidImageUrl(report.photo_alcalinidad) || 
+                    isValidImageUrl(report.photo_dureza) || isValidImageUrl(report.photo_estabilizador)) && (
                     <Ionicons name="images" size={16} color="#4CAF50" style={styles.photoIcon} />
                   )}
                 </View>
@@ -660,18 +672,32 @@ export default function ReportHistoryScreen() {
               <View style={styles.reportFooter}>
                 <View style={styles.photosIndicator}>
                   <Ionicons 
-                    name="camera" 
+                    name="flask" 
                     size={16} 
-                    color={isValidImageUrl(report.before_photo_url) ? '#4CAF50' : '#ccc'} 
+                    color={isValidImageUrl(report.photo_cloro_ph) ? '#4CAF50' : '#ccc'} 
                   />
-                  <Text style={styles.photoText}>Antes</Text>
+                  <Text style={styles.photoText}>Cl/pH</Text>
                   <Ionicons 
-                    name="camera" 
+                    name="beaker" 
                     size={16} 
-                    color={isValidImageUrl(report.after_photo_url) ? '#4CAF50' : '#ccc'} 
+                    color={isValidImageUrl(report.photo_alcalinidad) ? '#4CAF50' : '#ccc'} 
                     style={styles.photoIcon}
                   />
-                  <Text style={styles.photoText}>Después</Text>
+                  <Text style={styles.photoText}>Alc</Text>
+                  <Ionicons 
+                    name="water" 
+                    size={16} 
+                    color={isValidImageUrl(report.photo_dureza) ? '#4CAF50' : '#ccc'} 
+                    style={styles.photoIcon}
+                  />
+                  <Text style={styles.photoText}>Dur</Text>
+                  <Ionicons 
+                    name="shield-checkmark" 
+                    size={16} 
+                    color={isValidImageUrl(report.photo_estabilizador) ? '#4CAF50' : '#ccc'} 
+                    style={styles.photoIcon}
+                  />
+                  <Text style={styles.photoText}>Est</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#666" />
               </View>
@@ -864,13 +890,13 @@ export default function ReportHistoryScreen() {
               </View>
 
               <View style={styles.modalSection}>
-                <Text style={styles.modalSectionTitle}>Fotografías</Text>
+                <Text style={styles.modalSectionTitle}>Fotografías de Mediciones</Text>
                 <View style={styles.photosGrid}>
                   <View style={styles.photoContainer}>
-                    <Text style={styles.photoTitle}>Antes del Mantenimiento</Text>
-                    {isValidImageUrl(selectedReport.before_photo_url) ? (
+                    <Text style={styles.photoTitle}>🧪 Cloro y pH</Text>
+                    {isValidImageUrl(selectedReport.photo_cloro_ph) ? (
                       <Image 
-                        source={{ uri: getCompleteImageUrl(selectedReport.before_photo_url) || undefined }} 
+                        source={{ uri: getCompleteImageUrl(selectedReport.photo_cloro_ph) || undefined }} 
                         style={styles.modalPhoto}
                         resizeMode="cover"
                       />
@@ -883,10 +909,10 @@ export default function ReportHistoryScreen() {
                   </View>
                   
                   <View style={styles.photoContainer}>
-                    <Text style={styles.photoTitle}>Después del Mantenimiento</Text>
-                    {isValidImageUrl(selectedReport.after_photo_url) ? (
+                    <Text style={styles.photoTitle}>⚗️ Alcalinidad</Text>
+                    {isValidImageUrl(selectedReport.photo_alcalinidad) ? (
                       <Image 
-                        source={{ uri: getCompleteImageUrl(selectedReport.after_photo_url) || undefined }} 
+                        source={{ uri: getCompleteImageUrl(selectedReport.photo_alcalinidad) || undefined }} 
                         style={styles.modalPhoto}
                         resizeMode="cover"
                       />
@@ -897,6 +923,42 @@ export default function ReportHistoryScreen() {
                       </View>
                     )}
                   </View>
+
+                  {selectedReport.dureza_aplica && (
+                    <View style={styles.photoContainer}>
+                      <Text style={styles.photoTitle}>💎 Dureza</Text>
+                      {isValidImageUrl(selectedReport.photo_dureza) ? (
+                        <Image 
+                          source={{ uri: getCompleteImageUrl(selectedReport.photo_dureza) || undefined }} 
+                          style={styles.modalPhoto}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.noPhotoContainer}>
+                          <Ionicons name="camera-outline" size={48} color="#ccc" />
+                          <Text style={styles.noPhotoText}>Sin foto disponible</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
+
+                  {selectedReport.estabilizador_aplica && (
+                    <View style={styles.photoContainer}>
+                      <Text style={styles.photoTitle}>🛡️ Estabilizador</Text>
+                      {isValidImageUrl(selectedReport.photo_estabilizador) ? (
+                        <Image 
+                          source={{ uri: getCompleteImageUrl(selectedReport.photo_estabilizador) || undefined }} 
+                          style={styles.modalPhoto}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View style={styles.noPhotoContainer}>
+                          <Ionicons name="camera-outline" size={48} color="#ccc" />
+                          <Text style={styles.noPhotoText}>Sin foto disponible</Text>
+                        </View>
+                      )}
+                    </View>
+                  )}
                 </View>
               </View>
 
