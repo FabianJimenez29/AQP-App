@@ -37,6 +37,10 @@ export default function UnifiedNewReportScreen() {
   const [currentStep, setCurrentStep] = useState(1);
   const totalSteps = 9; // Actualizado: 1-Proyecto, 2-5 Fotos parámetros, 6-Químicos, 7-Equipos, 8-Materiales/Obs, 9-Finalizar
 
+  // Upload progress state
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadMessage, setUploadMessage] = useState('');
+
   // Projects state
   const [projects, setProjects] = useState<any[]>([]);
   const [selectedProject, setSelectedProject] = useState<any>(null);
@@ -243,10 +247,15 @@ export default function UnifiedNewReportScreen() {
             try {
               dispatch(setLoading(true));
               dispatch(setError(null));
+              setUploadProgress(0);
+              setUploadMessage('Iniciando...');
 
               const tempId = `temp_${Date.now()}`;
+              const totalUploads = 4; // 4 fotos potenciales
+              let completedUploads = 0;
 
               // Subir foto Cloro/pH
+              setUploadMessage('Subiendo foto de Cloro/pH...');
               let photoCloroPhUrl = '';
               if (photoCloroPh) {
                 try {
@@ -256,14 +265,20 @@ export default function UnifiedNewReportScreen() {
                     `${tempId}_cloro_ph`
                   );
                   photoCloroPhUrl = upload.url;
+                  completedUploads++;
+                  setUploadProgress((completedUploads / totalUploads) * 80);
                 } catch (uploadError) {
                   console.error('❌ Error subiendo imagen Cloro/pH:', uploadError);
                   Alert.alert('Error', 'No se pudo subir la imagen de Cloro/pH');
                   return;
                 }
+              } else {
+                completedUploads++;
+                setUploadProgress((completedUploads / totalUploads) * 80);
               }
 
               // Subir foto Alcalinidad
+              setUploadMessage('Subiendo foto de Alcalinidad...');
               let photoAlcalinidadUrl = '';
               if (photoAlcalinidad) {
                 try {
@@ -273,14 +288,20 @@ export default function UnifiedNewReportScreen() {
                     `${tempId}_alcalinidad`
                   );
                   photoAlcalinidadUrl = upload.url;
+                  completedUploads++;
+                  setUploadProgress((completedUploads / totalUploads) * 80);
                 } catch (uploadError) {
                   console.error('❌ Error subiendo imagen Alcalinidad:', uploadError);
                   Alert.alert('Error', 'No se pudo subir la imagen de Alcalinidad');
                   return;
                 }
+              } else {
+                completedUploads++;
+                setUploadProgress((completedUploads / totalUploads) * 80);
               }
 
               // Subir foto Dureza (si aplica)
+              setUploadMessage('Subiendo foto de Dureza...');
               let photoDurezaUrl = '';
               if (photoDureza && durezaAplica) {
                 try {
@@ -290,14 +311,20 @@ export default function UnifiedNewReportScreen() {
                     `${tempId}_dureza`
                   );
                   photoDurezaUrl = upload.url;
+                  completedUploads++;
+                  setUploadProgress((completedUploads / totalUploads) * 80);
                 } catch (uploadError) {
                   console.error('❌ Error subiendo imagen Dureza:', uploadError);
                   Alert.alert('Error', 'No se pudo subir la imagen de Dureza');
                   return;
                 }
+              } else {
+                completedUploads++;
+                setUploadProgress((completedUploads / totalUploads) * 80);
               }
 
               // Subir foto Estabilizador (si aplica)
+              setUploadMessage('Subiendo foto de Estabilizador...');
               let photoEstabilizadorUrl = '';
               if (photoEstabilizador && estabilizadorAplica) {
                 try {
@@ -307,12 +334,20 @@ export default function UnifiedNewReportScreen() {
                     `${tempId}_estabilizador`
                   );
                   photoEstabilizadorUrl = upload.url;
+                  completedUploads++;
+                  setUploadProgress((completedUploads / totalUploads) * 80);
                 } catch (uploadError) {
                   console.error('❌ Error subiendo imagen Estabilizador:', uploadError);
                   Alert.alert('Error', 'No se pudo subir la imagen de Estabilizador');
                   return;
                 }
+              } else {
+                completedUploads++;
+                setUploadProgress((completedUploads / totalUploads) * 80);
               }
+
+              setUploadMessage('Enviando reporte...');
+              setUploadProgress(85);
 
               const reportData = {
                 projectId: selectedProject.id,
@@ -353,6 +388,9 @@ export default function UnifiedNewReportScreen() {
 
               const savedReport = await ApiService.createReport(reportData as any, token || '');
               
+              setUploadProgress(100);
+              setUploadMessage('¡Completado!');
+              
               dispatch(incrementTodayReports());
               
               Alert.alert(
@@ -377,6 +415,8 @@ export default function UnifiedNewReportScreen() {
             } catch (error: any) {
               console.error('Error al enviar reporte:', error);
               Alert.alert('Error', `No se pudo enviar el reporte: ${error.message}`);
+              setUploadProgress(0);
+              setUploadMessage('');
             } finally {
               dispatch(setLoading(false));
             }
@@ -1251,6 +1291,17 @@ export default function UnifiedNewReportScreen() {
             </View>
           )}
         </View>
+
+        {/* Progress Bar */}
+        {isLoading && uploadProgress > 0 && (
+          <View style={styles.uploadProgressContainer}>
+            <Text style={styles.uploadProgressText}>{uploadMessage}</Text>
+            <View style={styles.uploadProgressBarContainer}>
+              <View style={[styles.uploadProgressBar, { width: `${uploadProgress}%` }]} />
+            </View>
+            <Text style={styles.uploadProgressPercentage}>{Math.round(uploadProgress)}%</Text>
+          </View>
+        )}
 
         <View style={styles.navigationButtons}>
           {currentStep > 1 && (
@@ -2264,4 +2315,46 @@ const styles = StyleSheet.create({
     color: '#0066CC',
     fontWeight: '600',
   },
+
+  // Progress Bar Styles
+  uploadProgressContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    marginHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#e9ecef',
+  },
+
+  uploadProgressText: {
+    fontSize: 14,
+    color: '#495057',
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+
+  uploadProgressBarContainer: {
+    height: 8,
+    backgroundColor: '#e9ecef',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+
+  uploadProgressBar: {
+    height: '100%',
+    backgroundColor: '#0066CC',
+    borderRadius: 4,
+  },
+
+  uploadProgressPercentage: {
+    fontSize: 12,
+    color: '#6c757d',
+    textAlign: 'center',
+    fontWeight: '600',
+  },
 });
+
