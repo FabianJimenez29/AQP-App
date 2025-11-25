@@ -27,21 +27,26 @@ export interface Chemicals {
   cloro_liquido: number;
 }
 
+export interface EquipmentItem {
+  aplica: boolean;
+  working: boolean | null;
+}
+
 export interface EquipmentCheck {
-  bomba_filtro: boolean;
-  bomba_reposadero: boolean;
-  bomba_espejo: boolean;
-  bomba_jets: boolean;
-  blower: boolean;
-  luces_piscina: boolean;
-  luces_spa: boolean;
-  luces_espejo: boolean;
-  filtro_piscina: boolean;
-  filtro_spa: boolean;
-  filtro_espejo: boolean;
-  clorinador_piscina: boolean;
-  clorinador_spa: boolean;
-  clorinador_espejo: boolean;
+  bomba_filtro: EquipmentItem;
+  bomba_reposadero: EquipmentItem;
+  bomba_espejo: EquipmentItem;
+  bomba_jets: EquipmentItem;
+  blower: EquipmentItem;
+  luces_piscina: EquipmentItem;
+  luces_spa: EquipmentItem;
+  luces_espejo: EquipmentItem;
+  filtro_piscina: EquipmentItem;
+  filtro_spa: EquipmentItem;
+  filtro_espejo: EquipmentItem;
+  clorinador_piscina: EquipmentItem;
+  clorinador_spa: EquipmentItem;
+  clorinador_espejo: EquipmentItem;
 }
 
 export interface Report {

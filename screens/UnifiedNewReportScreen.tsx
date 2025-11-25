@@ -24,6 +24,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { Parameters, Chemicals, EquipmentCheck } from '../types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '../constants/colors';
+import { showError, showSuccess, showConfirm, ErrorMessages, SuccessMessages } from '../components/ui/CustomAlert';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -79,16 +80,24 @@ export default function UnifiedNewReportScreen() {
   });
 
   const [equipmentCheck, setEquipmentCheck] = useState<EquipmentCheck>({
-    bomba_filtro: false, bomba_reposadero: false, bomba_espejo: false,
-    bomba_jets: false, blower: false, luces_piscina: false, luces_spa: false,
-    luces_espejo: false, filtro_piscina: false, filtro_spa: false,
-    filtro_espejo: false, clorinador_piscina: false, clorinador_spa: false,
-    clorinador_espejo: false
+    bomba_filtro: { aplica: true, working: false },
+    bomba_reposadero: { aplica: true, working: false },
+    bomba_espejo: { aplica: true, working: false },
+    bomba_jets: { aplica: true, working: false },
+    blower: { aplica: true, working: false },
+    luces_piscina: { aplica: true, working: false },
+    luces_spa: { aplica: true, working: false },
+    luces_espejo: { aplica: true, working: false },
+    filtro_piscina: { aplica: true, working: false },
+    filtro_spa: { aplica: true, working: false },
+    filtro_espejo: { aplica: true, working: false },
+    clorinador_piscina: { aplica: true, working: false },
+    clorinador_spa: { aplica: true, working: false },
+    clorinador_espejo: { aplica: true, working: false }
   });
 
   const [materialsDelivered, setMaterialsDelivered] = useState('');
   const [observations, setObservations] = useState('');
-  const [receivedBy, setReceivedBy] = useState('');
 
   // Load projects on mount
   useEffect(() => {
@@ -102,7 +111,7 @@ export default function UnifiedNewReportScreen() {
         setProjects(activeProjects);
       } catch (error) {
         console.error('Error loading projects:', error);
-        Alert.alert('Error', 'No se pudieron cargar los proyectos');
+        showError(ErrorMessages.LOAD_FAILED);
       } finally {
         setIsLoadingProjects(false);
       }
@@ -183,7 +192,7 @@ export default function UnifiedNewReportScreen() {
       }
     } catch (error) {
       console.error('Error al tomar foto:', error);
-      Alert.alert('Error', 'No se pudo tomar la foto');
+      showError(ErrorMessages.CAMERA_PERMISSION);
     }
   };
 
@@ -205,29 +214,35 @@ export default function UnifiedNewReportScreen() {
     setChemicals(prev => ({ ...prev, [key]: numValue }));
   };
 
-  const handleEquipmentToggle = (key: keyof EquipmentCheck) => {
-    setEquipmentCheck(prev => ({ ...prev, [key]: !prev[key] }));
+  const handleEquipmentToggle = (key: keyof EquipmentCheck, field: 'aplica' | 'working') => {
+    setEquipmentCheck(prev => ({
+      ...prev,
+      [key]: {
+        ...prev[key],
+        [field]: field === 'aplica' ? !prev[key].aplica : (prev[key].aplica ? !prev[key].working : prev[key].working)
+      }
+    }));
   };
 
   const validateForm = () => {
     if (!selectedProject) {
-      Alert.alert('Error', 'Debes seleccionar un proyecto');
+      showError('❌ Debes seleccionar un proyecto\n\nPor favor selecciona un proyecto activo de la lista.');
       return false;
     }
     if (!photoCloroPh) {
-      Alert.alert('Error', 'La foto de Cloro y pH es obligatoria');
+      showError('❌ Foto Requerida\n\nLa foto de Cloro y pH es obligatoria para continuar.');
       return false;
     }
     if (!photoAlcalinidad) {
-      Alert.alert('Error', 'La foto de Alcalinidad es obligatoria');
+      showError('❌ Foto Requerida\n\nLa foto de Alcalinidad es obligatoria para continuar.');
       return false;
     }
     if (durezaAplica && !photoDureza) {
-      Alert.alert('Error', 'La foto de Dureza es obligatoria cuando aplica');
+      showError('❌ Foto Requerida\n\nLa foto de Dureza es obligatoria cuando aplica.');
       return false;
     }
     if (estabilizadorAplica && !photoEstabilizador) {
-      Alert.alert('Error', 'La foto de Estabilizador es obligatoria cuando aplica');
+      showError('❌ Foto Requerida\n\nLa foto de Estabilizador es obligatoria cuando aplica.');
       return false;
     }
     return true;
@@ -236,19 +251,14 @@ export default function UnifiedNewReportScreen() {
   const handleSubmit = async () => {
     if (!validateForm()) return;
 
-    Alert.alert(
-      'Enviar Reporte',
+    showConfirm(
       '¿Estás seguro que deseas enviar este reporte?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Enviar',
-          onPress: async () => {
-            try {
-              dispatch(setLoading(true));
-              dispatch(setError(null));
-              setUploadProgress(0);
-              setUploadMessage('Iniciando...');
+      async () => {
+        try {
+          dispatch(setLoading(true));
+          dispatch(setError(null));
+          setUploadProgress(0);
+          setUploadMessage('Iniciando...');
 
               const tempId = `temp_${Date.now()}`;
               const totalUploads = 4; // 4 fotos potenciales
@@ -269,7 +279,7 @@ export default function UnifiedNewReportScreen() {
                   setUploadProgress((completedUploads / totalUploads) * 80);
                 } catch (uploadError) {
                   console.error('❌ Error subiendo imagen Cloro/pH:', uploadError);
-                  Alert.alert('Error', 'No se pudo subir la imagen de Cloro/pH');
+                  showError(ErrorMessages.FILE_UPLOAD_FAILED + '\n\nNo se pudo subir la imagen de Cloro/pH');
                   return;
                 }
               } else {
@@ -292,7 +302,7 @@ export default function UnifiedNewReportScreen() {
                   setUploadProgress((completedUploads / totalUploads) * 80);
                 } catch (uploadError) {
                   console.error('❌ Error subiendo imagen Alcalinidad:', uploadError);
-                  Alert.alert('Error', 'No se pudo subir la imagen de Alcalinidad');
+                  showError(ErrorMessages.FILE_UPLOAD_FAILED + '\n\nNo se pudo subir la imagen de Alcalinidad');
                   return;
                 }
               } else {
@@ -315,7 +325,7 @@ export default function UnifiedNewReportScreen() {
                   setUploadProgress((completedUploads / totalUploads) * 80);
                 } catch (uploadError) {
                   console.error('❌ Error subiendo imagen Dureza:', uploadError);
-                  Alert.alert('Error', 'No se pudo subir la imagen de Dureza');
+                  showError(ErrorMessages.FILE_UPLOAD_FAILED + '\n\nNo se pudo subir la imagen de Dureza');
                   return;
                 }
               } else {
@@ -338,7 +348,7 @@ export default function UnifiedNewReportScreen() {
                   setUploadProgress((completedUploads / totalUploads) * 80);
                 } catch (uploadError) {
                   console.error('❌ Error subiendo imagen Estabilizador:', uploadError);
-                  Alert.alert('Error', 'No se pudo subir la imagen de Estabilizador');
+                  showError(ErrorMessages.FILE_UPLOAD_FAILED + '\n\nNo se pudo subir la imagen de Estabilizador');
                   return;
                 }
               } else {
@@ -372,7 +382,6 @@ export default function UnifiedNewReportScreen() {
                 equipmentCheck,
                 materialsDelivered: materialsDelivered.trim(),
                 observations: observations.trim(),
-                receivedBy: receivedBy.trim(),
                 createdAt: new Date().toISOString(),
               };
 
@@ -414,15 +423,13 @@ export default function UnifiedNewReportScreen() {
 
             } catch (error: any) {
               console.error('Error al enviar reporte:', error);
-              Alert.alert('Error', `No se pudo enviar el reporte: ${error.message}`);
+              showError(`❌ No se pudo enviar el reporte\n\n${error.message}\n\nIntenta nuevamente.`);
               setUploadProgress(0);
               setUploadMessage('');
             } finally {
               dispatch(setLoading(false));
             }
-          },
-        },
-      ]
+          }
     );
   };
 
@@ -437,50 +444,50 @@ export default function UnifiedNewReportScreen() {
   ];
 
   const chemicalConfigs = [
-    { key: 'tricloro', label: 'Tricloro', unit: 'kg' },
-    { key: 'tabletas', label: 'Tabletas de Cloro', unit: 'unidades' },
-    { key: 'acido', label: 'Ácido', unit: 'L' },
-    { key: 'soda', label: 'Soda', unit: 'kg' },
-    { key: 'bicarbonato', label: 'Bicarbonato', unit: 'kg' },
-    { key: 'sal', label: 'Sal', unit: 'kg' },
+    { key: 'tricloro', label: 'Tricloro', unit: 'KG' },
+    { key: 'tabletas', label: 'Tabletas de Cloro', unit: 'Unidades' },
+    { key: 'acido', label: 'Ácido', unit: 'GL' },
+    { key: 'soda', label: 'Soda', unit: 'KG' },
+    { key: 'bicarbonato', label: 'Bicarbonato', unit: 'KG' },
+    { key: 'sal', label: 'Sal', unit: 'Bolsas' },
     { key: 'alguicida', label: 'Alguicida', unit: 'L' },
     { key: 'clarificador', label: 'Clarificador', unit: 'L' },
-    { key: 'cloro_liquido', label: 'Cloro Líquido', unit: 'L' },
+    { key: 'cloro_liquido', label: 'Cloro Líquido', unit: 'GL' },
   ];
 
   const equipmentSections = [
     {
       title: 'Bombas',
       items: [
-        { key: 'bomba_filtro', label: 'Bomba de Filtro' },
-        { key: 'bomba_reposadero', label: 'Bomba de Reposadero' },
-        { key: 'bomba_espejo', label: 'Bomba de Espejo' },
-        { key: 'bomba_jets', label: 'Bomba de Jets' },
+        { key: 'bomba_filtro', label: 'Bomba Filtro' },
+        { key: 'bomba_reposadero', label: 'Bomba Reposadero' },
+        { key: 'bomba_espejo', label: 'Bomba Espejo' },
+        { key: 'bomba_jets', label: 'Bomba Jets' },
         { key: 'blower', label: 'Blower' },
       ]
     },
     {
       title: 'Iluminación',
       items: [
-        { key: 'luces_piscina', label: 'Luces de Piscina' },
-        { key: 'luces_spa', label: 'Luces de Spa' },
-        { key: 'luces_espejo', label: 'Luces de Espejo' },
+        { key: 'luces_piscina', label: 'Luces Piscina' },
+        { key: 'luces_spa', label: 'Luces Spa' },
+        { key: 'luces_espejo', label: 'Luces Espejo' },
       ]
     },
     {
       title: 'Filtración',
       items: [
-        { key: 'filtro_piscina', label: 'Filtro de Piscina' },
-        { key: 'filtro_spa', label: 'Filtro de Spa' },
-        { key: 'filtro_espejo', label: 'Filtro de Espejo' },
+        { key: 'filtro_piscina', label: 'Filtro Piscina' },
+        { key: 'filtro_spa', label: 'Filtro Spa' },
+        { key: 'filtro_espejo', label: 'Filtro Espejo' },
       ]
     },
     {
       title: 'Clorinadores',
       items: [
-        { key: 'clorinador_piscina', label: 'Clorinador de Piscina' },
-        { key: 'clorinador_spa', label: 'Clorinador de Spa' },
-        { key: 'clorinador_espejo', label: 'Clorinador de Espejo' },
+        { key: 'clorinador_piscina', label: 'Clorinador Piscina' },
+        { key: 'clorinador_spa', label: 'Clorinador Spa' },
+        { key: 'clorinador_espejo', label: 'Clorinador Espejo' },
       ]
     }
   ];
@@ -1195,36 +1202,55 @@ export default function UnifiedNewReportScreen() {
                   <Text style={styles.equipmentSectionTitle}>
                     {section.title}
                   </Text>
-                  {section.items.map((item) => (
-                    <TouchableOpacity
-                      key={item.key}
-                      style={[
-                        styles.equipmentItem,
-                        equipmentCheck[item.key as keyof EquipmentCheck] && styles.equipmentItemChecked
-                      ]}
-                      onPress={() => handleEquipmentToggle(item.key as keyof EquipmentCheck)}
-                    >
-                      <View style={[
-                        styles.equipmentCheckbox,
-                        equipmentCheck[item.key as keyof EquipmentCheck] && styles.equipmentCheckboxChecked
-                      ]}>
-                        {equipmentCheck[item.key as keyof EquipmentCheck] && (
-                          <Ionicons name="checkmark" size={18} color="white" />
-                        )}
-                      </View>
-                      <Text style={[
-                        styles.equipmentText,
-                        equipmentCheck[item.key as keyof EquipmentCheck] && styles.equipmentTextChecked
-                      ]}>
-                        {item.label}
-                      </Text>
-                      {equipmentCheck[item.key as keyof EquipmentCheck] && (
-                        <View style={styles.equipmentStatus}>
-                          <Text style={styles.equipmentStatusText}>OK</Text>
+                  {section.items.map((item) => {
+                    const equipment = equipmentCheck[item.key as keyof EquipmentCheck];
+                    return (
+                      <View key={item.key} style={styles.equipmentRow}>
+                        <View style={styles.equipmentHeader}>
+                          <Text style={styles.equipmentLabel}>{item.label}</Text>
                         </View>
-                      )}
-                    </TouchableOpacity>
-                  ))}
+                        
+                        <View style={styles.equipmentControls}>
+                          {/* Checkbox Aplica/No Aplica */}
+                          <TouchableOpacity
+                            style={styles.aplicaCheckContainer}
+                            onPress={() => handleEquipmentToggle(item.key as keyof EquipmentCheck, 'aplica')}
+                          >
+                            <View style={[
+                              styles.aplicaCheckbox,
+                              equipment.aplica && styles.aplicaCheckboxChecked
+                            ]}>
+                              {equipment.aplica && <Ionicons name="checkmark" size={16} color="white" />}
+                            </View>
+                            <Text style={styles.aplicaLabel}>
+                              {equipment.aplica ? 'Aplica' : 'No Aplica'}
+                            </Text>
+                          </TouchableOpacity>
+
+                          {/* Checkbox Funciona (solo si aplica) */}
+                          {equipment.aplica && (
+                            <TouchableOpacity
+                              style={styles.workingCheckContainer}
+                              onPress={() => handleEquipmentToggle(item.key as keyof EquipmentCheck, 'working')}
+                            >
+                              <View style={[
+                                styles.workingCheckbox,
+                                equipment.working && styles.workingCheckboxChecked
+                              ]}>
+                                {equipment.working && <Ionicons name="checkmark" size={16} color="white" />}
+                              </View>
+                              <Text style={[
+                                styles.workingLabel,
+                                equipment.working && styles.workingLabelChecked
+                              ]}>
+                                {equipment.working ? 'Funciona' : 'No Funciona'}
+                              </Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  })}
                 </View>
               ))}
             </View>
@@ -1272,19 +1298,6 @@ export default function UnifiedNewReportScreen() {
                     multiline
                     numberOfLines={4}
                     textAlignVertical="top"
-                  />
-                </View>
-
-                <View style={styles.inputGroup}>
-                  <Text style={styles.label}>
-                    <Ionicons name="person-circle" size={16} color="#666" /> Recibido por
-                  </Text>
-                  <TextInput
-                    style={styles.input}
-                    value={receivedBy}
-                    onChangeText={setReceivedBy}
-                    placeholder="Nombre de quien recibe el servicio"
-                    placeholderTextColor="#999"
                   />
                 </View>
               </View>
@@ -1864,54 +1877,87 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginTop: 8,
   },
-  equipmentItem: {
+  equipmentRow: {
+    marginBottom: 16,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  equipmentHeader: {
+    marginBottom: 10,
+  },
+  equipmentLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#1a1a1a',
+  },
+  equipmentControls: {
+    flexDirection: 'row',
+    gap: 12,
+    flexWrap: 'wrap',
+  },
+  aplicaCheckContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: '#fafafa',
-    marginBottom: 8,
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: '#e0e0e0',
   },
-  equipmentItemChecked: {
-    backgroundColor: '#e8f5e9',
-    borderColor: '#4caf50',
-  },
-  equipmentCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+  aplicaCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
     borderWidth: 2,
-    borderColor: '#ccc',
-    marginRight: 12,
+    borderColor: '#999',
+    marginRight: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#fff',
   },
-  equipmentCheckboxChecked: {
-    backgroundColor: '#4caf50',
-    borderColor: '#4caf50',
+  aplicaCheckboxChecked: {
+    backgroundColor: '#2196F3',
+    borderColor: '#2196F3',
   },
-  equipmentText: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#1a1a1a',
-  },
-  equipmentTextChecked: {
+  aplicaLabel: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#2e7d32',
+    color: '#666',
   },
-  equipmentStatus: {
-    backgroundColor: '#4caf50',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+  workingCheckContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
   },
-  equipmentStatusText: {
-    color: 'white',
-    fontSize: 11,
-    fontWeight: '700',
+  workingCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#EF4444',
+    marginRight: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  workingCheckboxChecked: {
+    backgroundColor: '#10B981',
+    borderColor: '#10B981',
+  },
+  workingLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  workingLabelChecked: {
+    color: '#10B981',
   },
 
   // Summary

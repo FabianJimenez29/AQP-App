@@ -8,9 +8,9 @@ import {
   RefreshControl,
   Image,
   Modal,
-  Alert,
   Linking,
   Platform,
+  Alert,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -23,6 +23,7 @@ import { getImageUrl } from '../services/api';
 import ApiService from '../services/api';
 import PoolHeader from '../components/ui/PoolHeader';
 import Colors from '../constants/colors';
+import { showError, showConfirm, ErrorMessages } from '../components/ui/CustomAlert';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -193,7 +194,8 @@ export default function ReportHistoryScreen() {
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'America/Costa_Rica'
     });
   };
 
@@ -242,7 +244,7 @@ export default function ReportHistoryScreen() {
   const sendReportViaWhatsApp = async (report: Report) => {
     try {
       if (!token) {
-        Alert.alert('Error', 'No estás autenticado');
+        showError(ErrorMessages.AUTH_REQUIRED);
         return;
       }
 
@@ -346,7 +348,7 @@ export default function ReportHistoryScreen() {
                     
                   } catch (shareError: any) {
                     console.error('❌ Error al compartir:', shareError);
-                    Alert.alert('Error', `No se pudo compartir el PDF: ${shareError.message}`);
+                    showError(ErrorMessages.PDF_SHARE_FAILED);
                   }
                 }
               },
@@ -358,7 +360,14 @@ export default function ReportHistoryScreen() {
                   
                   let message = `*🏊 REPORTE DE PISCINA #${report.report_number}*\n\n`;
                   message += `*Proyecto:* ${report.project_name || 'N/A'}\n`;
-                  message += `*Fecha:* ${new Date(report.created_at).toLocaleDateString()}\n\n`;
+                  message += `*Fecha:* ${new Date(report.created_at).toLocaleDateString('es-ES', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'America/Costa_Rica'
+                  })}\n\n`;
                   message += `📄 *Descarga el PDF aquí:*\n${pdfPublicUrl}\n\n`;
                   message += `_Reporte generado por AquaPool App_`;
                   
@@ -368,7 +377,7 @@ export default function ReportHistoryScreen() {
                   console.log('📱 Abriendo WhatsApp con link público:', pdfPublicUrl);
                   
                   Linking.openURL(whatsappUrl).catch(() => {
-                    Alert.alert('Error', 'No se pudo abrir WhatsApp');
+                    showError(ErrorMessages.WHATSAPP_NOT_INSTALLED);
                   });
                 }
               },
@@ -404,7 +413,7 @@ export default function ReportHistoryScreen() {
                     
                   } catch (shareError: any) {
                     console.error('❌ Error al compartir:', shareError);
-                    Alert.alert('Error', `No se pudo compartir el PDF: ${shareError.message}`);
+                    showError(ErrorMessages.PDF_SHARE_FAILED);
                   }
                 }
               },
@@ -426,18 +435,14 @@ export default function ReportHistoryScreen() {
         
         setIsDownloading(false);
         
-        Alert.alert(
-          'Error al generar PDF',
-          `No se pudo descargar el PDF del servidor.\n\nError: ${error.message}\n\n¿Deseas compartir como texto?`,
-          [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Compartir como Texto', onPress: () => sendReportAsText(report) }
-          ]
+        showConfirm(
+          '❌ Error al generar PDF\n\nNo se pudo descargar el PDF del servidor.\n\n¿Deseas compartir como texto?',
+          () => sendReportAsText(report)
         );
       }
     } catch (error) {
       console.error('Error:', error);
-      Alert.alert('Error', 'Ocurrió un error al compartir el reporte');
+      showError(ErrorMessages.UNKNOWN_ERROR);
     }
   };
 
@@ -475,13 +480,13 @@ export default function ReportHistoryScreen() {
       const chemicalsUsed = [];
       if (report.chemicals.tricloro > 0) chemicalsUsed.push(`• Tricloro: ${report.chemicals.tricloro} kg`);
       if (report.chemicals.tabletas > 0) chemicalsUsed.push(`• Tabletas: ${report.chemicals.tabletas} unidades`);
-      if (report.chemicals.acido > 0) chemicalsUsed.push(`• Ácido: ${report.chemicals.acido} L`);
+      if (report.chemicals.acido > 0) chemicalsUsed.push(`• Ácido: ${report.chemicals.acido} gl`);
       if (report.chemicals.soda > 0) chemicalsUsed.push(`• Soda: ${report.chemicals.soda} kg`);
       if (report.chemicals.bicarbonato > 0) chemicalsUsed.push(`• Bicarbonato: ${report.chemicals.bicarbonato} kg`);
-      if (report.chemicals.sal > 0) chemicalsUsed.push(`• Sal: ${report.chemicals.sal} kg`);
+      if (report.chemicals.sal > 0) chemicalsUsed.push(`• Sal: ${report.chemicals.sal} bolsas`);
       if (report.chemicals.alguicida > 0) chemicalsUsed.push(`• Alguicida: ${report.chemicals.alguicida} L`);
       if (report.chemicals.clarificador > 0) chemicalsUsed.push(`• Clarificador: ${report.chemicals.clarificador} L`);
-      if (report.chemicals.cloro_liquido > 0) chemicalsUsed.push(`• Cloro Líquido: ${report.chemicals.cloro_liquido} L`);
+      if (report.chemicals.cloro_liquido > 0) chemicalsUsed.push(`• Cloro Líquido: ${report.chemicals.cloro_liquido} gl`);
       
       if (chemicalsUsed.length > 0) {
         message += `*🧪 QUÍMICOS UTILIZADOS*\n${chemicalsUsed.join('\n')}\n\n`;
@@ -494,9 +499,6 @@ export default function ReportHistoryScreen() {
     if (report.observations) {
       message += `*📝 Observaciones:* ${report.observations}\n`;
     }
-    if (report.received_by) {
-      message += `*✍️ Recibido por:* ${report.received_by}\n`;
-    }
 
     message += `\n_Reporte generado por AquaPool App_`;
 
@@ -508,7 +510,7 @@ export default function ReportHistoryScreen() {
       : `https://wa.me/?text=${encodedMessage}`;
 
     Linking.openURL(whatsappUrl).catch(() => {
-      Alert.alert('Error', 'No se pudo abrir WhatsApp. Asegúrate de tener WhatsApp instalado.');
+      showError(ErrorMessages.WHATSAPP_NOT_INSTALLED);
     });
   };
 
@@ -983,18 +985,18 @@ export default function ReportHistoryScreen() {
                   <View style={styles.parametersGrid}>
                     {selectedReport.chemicals.tricloro > 0 && renderParameterValue('Tricloro', selectedReport.chemicals.tricloro, ' kg')}
                     {selectedReport.chemicals.tabletas > 0 && renderParameterValue('Tabletas', selectedReport.chemicals.tabletas, ' unidades')}
-                    {selectedReport.chemicals.acido > 0 && renderParameterValue('Ácido', selectedReport.chemicals.acido, ' L')}
+                    {selectedReport.chemicals.acido > 0 && renderParameterValue('Ácido', selectedReport.chemicals.acido, ' gl')}
                     {selectedReport.chemicals.soda > 0 && renderParameterValue('Soda', selectedReport.chemicals.soda, ' kg')}
                     {selectedReport.chemicals.bicarbonato > 0 && renderParameterValue('Bicarbonato', selectedReport.chemicals.bicarbonato, ' kg')}
-                    {selectedReport.chemicals.sal > 0 && renderParameterValue('Sal', selectedReport.chemicals.sal, ' kg')}
+                    {selectedReport.chemicals.sal > 0 && renderParameterValue('Sal', selectedReport.chemicals.sal, ' bolsas')}
                     {selectedReport.chemicals.alguicida > 0 && renderParameterValue('Alguicida', selectedReport.chemicals.alguicida, ' L')}
                     {selectedReport.chemicals.clarificador > 0 && renderParameterValue('Clarificador', selectedReport.chemicals.clarificador, ' L')}
-                    {selectedReport.chemicals.cloro_liquido > 0 && renderParameterValue('Cloro Líquido', selectedReport.chemicals.cloro_liquido, ' L')}
+                    {selectedReport.chemicals.cloro_liquido > 0 && renderParameterValue('Cloro Líquido', selectedReport.chemicals.cloro_liquido, ' gl')}
                   </View>
                 </View>
               )}
 
-              {(selectedReport.materials_delivered || selectedReport.observations || selectedReport.received_by) && (
+              {(selectedReport.materials_delivered || selectedReport.observations) && (
                 <View style={styles.modalSection}>
                   <Text style={styles.modalSectionTitle}>Información Adicional</Text>
                   {selectedReport.materials_delivered && (
@@ -1007,12 +1009,6 @@ export default function ReportHistoryScreen() {
                     <View style={styles.additionalInfo}>
                       <Text style={styles.additionalLabel}>Observaciones:</Text>
                       <Text style={styles.additionalValue}>{selectedReport.observations}</Text>
-                    </View>
-                  )}
-                  {selectedReport.received_by && (
-                    <View style={styles.additionalInfo}>
-                      <Text style={styles.additionalLabel}>Recibido por:</Text>
-                      <Text style={styles.additionalValue}>{selectedReport.received_by}</Text>
                     </View>
                   )}
                 </View>

@@ -5,7 +5,6 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
   KeyboardAvoidingView,
   Platform,
   Image,
@@ -18,6 +17,7 @@ import type { StackNavigationProp } from '@react-navigation/stack';
 import { loginStart, loginSuccess, loginFailure } from '../store/authSlice';
 import ApiService from '../services/api';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+import { showError, ErrorMessages } from '../components/ui/CustomAlert';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -56,7 +56,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Error', 'Por favor ingresa email y contraseña');
+      showError(ErrorMessages.AUTH_FIELDS_REQUIRED);
       return;
     }
 
@@ -72,64 +72,51 @@ export default function LoginScreen() {
 
       dispatch(loginSuccess(response));
       
-      navigation.replace('Dashboard');
+      // Redirigir según el rol del usuario
+      if (response.user.role === 'admin') {
+        navigation.replace('AdminDashboard');
+      } else {
+        navigation.replace('Dashboard');
+      }
       
     } catch (error: any) {
       dispatch(loginFailure());
       
-      let errorTitle = 'Error de Autenticación';
-      let errorMessage = 'No se pudo iniciar sesión';
-      let errorCode = 'UNKNOWN_ERROR';
+      let errorMessage = ErrorMessages.AUTH_INVALID_CREDENTIALS;
 
       if (error.message) {
         if (error.message.includes('HTTP error! status:')) {
           const statusCode = error.message.match(/status: (\d+)/)?.[1];
-          errorCode = `HTTP_${statusCode}`;
           
           switch (statusCode) {
             case '401':
-              errorMessage = 'Credenciales incorrectas. Verifica tu email y contraseña.';
+              errorMessage = '❌ Credenciales incorrectas.\n\nVerifica tu email y contraseña e intenta nuevamente.';
               break;
             case '403':
-              errorMessage = 'Tu cuenta no tiene permisos para acceder al sistema.';
+              errorMessage = '❌ Acceso Denegado\n\nTu cuenta no tiene permisos para acceder al sistema.';
               break;
             case '404':
-              errorTitle = 'Servidor No Encontrado';
-              errorMessage = 'No se pudo conectar al servidor. Verifica que el backend esté ejecutándose.';
+              errorMessage = ErrorMessages.SERVER_ERROR + '\n\nNo se pudo conectar al servidor. Verifica que el backend esté ejecutándose.';
               break;
             case '500':
-              errorTitle = 'Error del Servidor';
-              errorMessage = 'Error interno del servidor. Inténtalo más tarde.';
-              break;
             case '503':
-              errorTitle = 'Servicio No Disponible';
-              errorMessage = 'El servidor está en mantenimiento. Inténtalo más tarde.';
+              errorMessage = ErrorMessages.SERVER_ERROR;
               break;
             default:
-              errorMessage = `Error del servidor (${statusCode}). Contacta al administrador.`;
+              errorMessage = `❌ Error del servidor (${statusCode}).\n\nContacta al administrador del sistema.`;
           }
         } else if (error.message.includes('Failed to fetch') || error.message.includes('Network request failed')) {
-          errorTitle = 'Error de Conexión';
-          errorMessage = 'No se puede conectar al servidor. Verifica:\n• Que el backend esté ejecutándose\n• Tu conexión a internet\n• La URL del servidor';
-          errorCode = 'NETWORK_ERROR';
+          errorMessage = ErrorMessages.NETWORK_ERROR;
         } else if (error.message.includes('Invalid credentials')) {
-          errorMessage = 'Email o contraseña incorrectos.';
-          errorCode = 'INVALID_CREDENTIALS';
+          errorMessage = ErrorMessages.AUTH_INVALID_CREDENTIALS;
         } else if (error.message.includes('Respuesta del servidor inválida')) {
-          errorTitle = 'Error del Servidor';
-          errorMessage = 'El servidor devolvió una respuesta inválida.';
-          errorCode = 'INVALID_RESPONSE';
+          errorMessage = ErrorMessages.SERVER_ERROR + '\n\nEl servidor devolvió una respuesta inválida.';
         } else {
-          errorMessage = error.message;
-          errorCode = 'CUSTOM_ERROR';
+          errorMessage = `❌ ${error.message}`;
         }
       }
 
-      Alert.alert(
-        errorTitle,
-        `${errorMessage}\n\nCódigo de Error: ${errorCode}\nURL del Servidor: ${ApiService.apiUrl}`,
-        [{ text: 'OK' }]
-      );
+      showError(errorMessage);
     } finally {
       setIsLoading(false);
     }

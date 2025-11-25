@@ -15,6 +15,15 @@ import ProfileScreen from './screens/ProfileScreen';
 import ProductsScreen from './screens/ProductsScreen';
 import CartScreen from './screens/CartScreen';
 
+// Admin screens
+import AdminDashboardScreen from './screens/AdminDashboardScreen';
+import AdminUsersScreen from './screens/AdminUsersScreen';
+import AdminReportsScreen from './screens/AdminReportsScreen';
+import AdminInventoryScreen from './screens/AdminInventoryScreen';
+import AdminProjectsScreen from './screens/AdminProjectsScreen';
+import AdminOrdersScreen from './screens/AdminOrdersScreen';
+import AdminMonthlyReportScreen from './screens/AdminMonthlyReportScreen';
+
 const Stack = createStackNavigator();
 
 function AppContent() {
@@ -51,6 +60,19 @@ function AppContent() {
         <Stack.Screen name="Products" component={ProductsScreen} />
         <Stack.Screen name="Cart" component={CartScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        
+        {/* Admin Screens */}
+        <Stack.Screen 
+          name="AdminDashboard" 
+          component={AdminDashboardScreen}
+          options={{ gestureEnabled: false }}
+        />
+        <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+        <Stack.Screen name="AdminReports" component={AdminReportsScreen} />
+        <Stack.Screen name="AdminInventory" component={AdminInventoryScreen} />
+        <Stack.Screen name="AdminProjects" component={AdminProjectsScreen} />
+        <Stack.Screen name="AdminOrders" component={AdminOrdersScreen} />
+        <Stack.Screen name="AdminMonthlyReport" component={AdminMonthlyReportScreen} />
       </Stack.Navigator>
       <StatusBar style="auto" />
     </NavigationContainer>

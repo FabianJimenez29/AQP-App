@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   ScrollView,
-  Alert,
   RefreshControl,
   Image,
 } from 'react-native';
@@ -19,6 +18,7 @@ import { incrementTodayReports } from '../store/statsSlice';
 import { Ionicons, MaterialIcons, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import Colors from '../constants/colors';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { showConfirm } from '../components/ui/CustomAlert';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -47,19 +47,12 @@ export default function DashboardScreen() {
   };
 
   const handleLogout = () => {
-    Alert.alert(
-      'Cerrar Sesión',
+    showConfirm(
       '¿Estás seguro que deseas cerrar sesión?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { 
-          text: 'Cerrar Sesión', 
-          onPress: () => {
-            dispatch(logout());
-            navigation.replace('Login');
-          }
-        },
-      ]
+      () => {
+        dispatch(logout());
+        navigation.replace('Login');
+      }
     );
   };
 
@@ -261,7 +254,8 @@ export default function DashboardScreen() {
                   <Text style={styles.activitySubtitle}>
                     {report.location || 'Sin ubicación'} • {new Date(report.created_at).toLocaleDateString('es-ES', { 
                       day: 'numeric', 
-                      month: 'short' 
+                      month: 'short',
+                      timeZone: 'America/Costa_Rica'
                     })}
                   </Text>
                 </View>
