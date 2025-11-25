@@ -19,15 +19,17 @@ import { showError, showSuccess, ErrorMessages, SuccessMessages } from '../compo
 
 interface Order {
   id: number;
-  user: {
-    name: string;
-  };
+  order_number: string;
+  technician_name: string;
+  user_id?: string;
   items: Array<{
+    id: number;
     product_name: string;
+    variant_info?: string;
     quantity: number;
   }>;
-  total: number;
-  status: 'pending' | 'completed' | 'cancelled';
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  notes?: string;
   created_at: string;
 }
 
@@ -42,8 +44,18 @@ export default function AdminOrdersScreen() {
   const loadOrders = async () => {
     try {
       const response = await ApiService.getOrders(token!, 1, 50);
-      setOrders(response.orders || []);
+      console.log('Orders response:', response);
+      
+      // Manejar la estructura de respuesta del backend
+      if (response.success && response.data && response.data.orders) {
+        setOrders(response.data.orders);
+      } else if (response.orders) {
+        setOrders(response.orders);
+      } else {
+        setOrders([]);
+      }
     } catch (error: any) {
+      console.error('Error loading orders:', error);
       showError(ErrorMessages.LOAD_FAILED);
     } finally {
       setLoading(false);
@@ -73,18 +85,22 @@ export default function AdminOrdersScreen() {
   const showStatusMenu = (order: Order) => {
     Alert.alert(
       'Actualizar Estado',
-      `Orden #${order.id}`,
+      `Orden ${order.order_number}`,
       [
         {
           text: 'Pendiente',
           onPress: () => handleUpdateStatus(order.id, 'pending'),
         },
         {
-          text: 'Completado',
+          text: 'Confirmada',
+          onPress: () => handleUpdateStatus(order.id, 'confirmed'),
+        },
+        {
+          text: 'Completada',
           onPress: () => handleUpdateStatus(order.id, 'completed'),
         },
         {
-          text: 'Cancelado',
+          text: 'Cancelada',
           onPress: () => handleUpdateStatus(order.id, 'cancelled'),
           style: 'destructive',
         },
@@ -108,6 +124,8 @@ export default function AdminOrdersScreen() {
     switch (status) {
       case 'pending':
         return { bg: '#FEF3C7', text: '#F59E0B' };
+      case 'confirmed':
+        return { bg: '#DBEAFE', text: '#2563EB' };
       case 'completed':
         return { bg: '#D1FAE5', text: '#059669' };
       case 'cancelled':
@@ -121,10 +139,12 @@ export default function AdminOrdersScreen() {
     switch (status) {
       case 'pending':
         return 'Pendiente';
+      case 'confirmed':
+        return 'Confirmada';
       case 'completed':
-        return 'Completado';
+        return 'Completada';
       case 'cancelled':
-        return 'Cancelado';
+        return 'Cancelada';
       default:
         return status;
     }
@@ -174,7 +194,7 @@ export default function AdminOrdersScreen() {
                     </View>
                     <View style={styles.orderInfo}>
                       <View style={styles.orderTop}>
-                        <Text style={styles.orderId}>Orden #{order.id}</Text>
+                        <Text style={styles.orderId}>{order.order_number}</Text>
                         <View
                           style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}
                         >
@@ -183,7 +203,7 @@ export default function AdminOrdersScreen() {
                           </Text>
                         </View>
                       </View>
-                      <Text style={styles.userName}>{order.user.name}</Text>
+                      <Text style={styles.userName}>{order.technician_name}</Text>
                       <Text style={styles.dateText}>{formatDate(order.created_at)}</Text>
                     </View>
                   </View>
@@ -205,8 +225,10 @@ export default function AdminOrdersScreen() {
                   </View>
 
                   <View style={styles.orderFooter}>
-                    <Text style={styles.totalLabel}>Total:</Text>
-                    <Text style={styles.totalAmount}>${order.total.toFixed(2)}</Text>
+                    <Text style={styles.totalLabel}>Total Productos:</Text>
+                    <Text style={styles.totalAmount}>
+                      {order.items.reduce((sum, item) => sum + item.quantity, 0)}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               );
