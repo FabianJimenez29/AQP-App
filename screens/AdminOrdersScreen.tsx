@@ -212,9 +212,15 @@ export default function AdminOrdersScreen() {
                     {order.items.slice(0, 3).map((item, index) => (
                       <View key={index} style={styles.orderItem}>
                         <Ionicons name="cube" size={16} color="#64748B" />
-                        <Text style={styles.itemText}>
-                          {item.product_name} x{item.quantity}
-                        </Text>
+                        <View style={styles.itemTextContainer}>
+                          <Text style={styles.itemText}>
+                            {item.product_name}
+                            {item.variant_info && (
+                              <Text style={styles.variantText}> - {item.variant_info}</Text>
+                            )}
+                            <Text style={styles.quantityText}> x{item.quantity}</Text>
+                          </Text>
+                        </View>
                       </View>
                     ))}
                     {order.items.length > 3 && (
@@ -351,9 +357,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
+  itemTextContainer: {
+    flex: 1,
+  },
   itemText: {
     fontSize: 14,
+    color: '#1E293B',
+    fontWeight: '500',
+  },
+  variantText: {
+    fontSize: 13,
     color: '#64748B',
+    fontWeight: '400',
+    fontStyle: 'italic',
+  },
+  quantityText: {
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
   },
   moreItems: {
     fontSize: 12,
