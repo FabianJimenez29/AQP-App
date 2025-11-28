@@ -323,32 +323,35 @@ export default function ReportHistoryScreen() {
 
         setIsDownloading(false);
 
-        // Compartir PDF usando react-native-share (funciona con WhatsApp en iOS)
-        console.log('📤 Compartiendo PDF con react-native-share...');
+        // Compartir PDF usando react-native-share
+        console.log('📤 Compartiendo PDF...');
+        console.log('📄 URI:', downloadResult.uri);
         
         try {
+          // Opciones mínimas - solo el archivo PDF
           const shareOptions = {
-            title: `Reporte ${cleanReportNum}`,
-            message: `Reporte de Piscina #${report.report_number}`,
-            url: Platform.OS === 'ios' ? downloadResult.uri : `file://${downloadResult.uri}`,
+            url: downloadResult.uri,
             type: 'application/pdf',
-            subject: `Reporte ${cleanReportNum}`,
             failOnCancel: false
           };
 
-          console.log('📤 Opciones:', JSON.stringify(shareOptions));
+          console.log('📤 Llamando Share.open...');
 
           const result = await Share.open(shareOptions);
           
-          console.log('✅ Share completado:', JSON.stringify(result));
+          console.log('✅ Share.open completado');
+          console.log('📊 Resultado:', JSON.stringify(result));
           
         } catch (error: any) {
-          console.error('❌ Error al compartir:', error);
+          console.error('❌ Error en Share.open:', error);
+          console.error('   Nombre:', error.name);
+          console.error('   Mensaje:', error.message);
           
-          if (error.message !== 'User did not share') {
+          // No mostrar error si el usuario canceló
+          if (error.message && !error.message.includes('User did not share') && !error.message.includes('cancelled')) {
             Alert.alert(
-              'Error',
-              `No se pudo compartir el PDF.\n\n${error.message}`
+              'Error al compartir',
+              `No se pudo abrir el menú de compartir.\n\n${error.message}`
             );
           }
         }
