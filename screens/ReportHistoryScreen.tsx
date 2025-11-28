@@ -13,7 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import * as Sharing from 'expo-sharing';
+import Share from 'react-native-share';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
@@ -319,114 +319,38 @@ export default function ReportHistoryScreen() {
 
         const fileSizeMB = (fileInfo.size / 1024 / 1024).toFixed(2);
         console.log(`✅ PDF listo - ${fileSizeMB} MB`);
+        console.log('📄 Archivo guardado en:', downloadResult.uri);
 
         setIsDownloading(false);
 
-        // Si hay número de WhatsApp, ofrecer enviar directamente
-        if (report.project_client_phone) {
-          const cleanPhone = (report.project_client_phone || '').replace(/[^0-9]/g, '');
+        // Compartir PDF usando react-native-share (funciona con WhatsApp en iOS)
+        console.log('📤 Compartiendo PDF con react-native-share...');
+        
+        try {
+          const shareOptions = {
+            title: `Reporte ${cleanReportNum}`,
+            message: `Reporte de Piscina #${report.report_number}`,
+            url: Platform.OS === 'ios' ? downloadResult.uri : `file://${downloadResult.uri}`,
+            type: 'application/pdf',
+            subject: `Reporte ${cleanReportNum}`,
+            failOnCancel: false
+          };
+
+          console.log('📤 Opciones:', JSON.stringify(shareOptions));
+
+          const result = await Share.open(shareOptions);
           
-          Alert.alert(
-            '✅ PDF Generado',
-            `El reporte está listo (${fileSizeMB} MB)\n\n¿Cómo deseas enviarlo?\n\n📱 ${report.project_client_phone}`,
-            [
-              {
-                text: '📄 Compartir archivo PDF',
-                onPress: async () => {
-                  try {
-                    console.log('📤 Compartiendo archivo PDF...');
-                    console.log('📱 Número destino:', cleanPhone);
-                    
-                    // Compartir el archivo con expo-sharing
-                    await Sharing.shareAsync(downloadResult.uri, {
-                      mimeType: 'application/pdf',
-                      dialogTitle: `Compartir Reporte ${cleanReportNum}`,
-                      UTI: 'com.adobe.pdf'
-                    });
-                    
-                    console.log('✅ Menú de compartir abierto');
-                    
-                  } catch (shareError: any) {
-                    console.error('❌ Error al compartir:', shareError);
-                    showError(ErrorMessages.PDF_SHARE_FAILED);
-                  }
-                }
-              },
-              {
-                text: '🔗 Enviar link por WhatsApp',
-                onPress: () => {
-                  // Enviar link público del PDF por WhatsApp
-                  const pdfPublicUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf/public`;
-                  
-                  let message = `*🏊 REPORTE DE PISCINA #${report.report_number}*\n\n`;
-                  message += `*Proyecto:* ${report.project_name || 'N/A'}\n`;
-                  message += `*Fecha:* ${new Date(report.created_at).toLocaleDateString('es-ES', {
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'America/Costa_Rica'
-                  })}\n\n`;
-                  message += `📄 *Descarga el PDF aquí:*\n${pdfPublicUrl}\n\n`;
-                  message += `_Reporte generado por AquaPool App_`;
-                  
-                  const encodedMessage = encodeURIComponent(message);
-                  const whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
-                  
-                  console.log('📱 Abriendo WhatsApp con link público:', pdfPublicUrl);
-                  
-                  Linking.openURL(whatsappUrl).catch(() => {
-                    showError(ErrorMessages.WHATSAPP_NOT_INSTALLED);
-                  });
-                }
-              },
-              {
-                text: 'Enviar Resumen (texto)',
-                onPress: () => sendReportAsText(report)
-              },
-              {
-                text: 'Cancelar',
-                style: 'cancel'
-              }
-            ]
-          );
-        } else {
-          // Sin número de WhatsApp, solo mostrar menú de compartir
-          Alert.alert(
-            '✅ PDF Generado',
-            `El reporte está listo (${fileSizeMB} MB)\n\n¿Cómo deseas compartirlo?`,
-            [
-              {
-                text: '📱 WhatsApp / Email / Otros',
-                onPress: async () => {
-                  try {
-                    console.log('📤 Abriendo menú de compartir...');
-                    
-                    await Sharing.shareAsync(downloadResult.uri, {
-                      mimeType: 'application/pdf',
-                      dialogTitle: `Compartir Reporte ${cleanReportNum}`,
-                      UTI: 'com.adobe.pdf'
-                    });
-                    
-                    console.log('✅ PDF compartido');
-                    
-                  } catch (shareError: any) {
-                    console.error('❌ Error al compartir:', shareError);
-                    showError(ErrorMessages.PDF_SHARE_FAILED);
-                  }
-                }
-              },
-              {
-                text: '💬 Enviar como Texto',
-                onPress: () => sendReportAsText(report)
-              },
-              {
-                text: 'Cancelar',
-                style: 'cancel'
-              }
-            ]
-          );
+          console.log('✅ Share completado:', JSON.stringify(result));
+          
+        } catch (error: any) {
+          console.error('❌ Error al compartir:', error);
+          
+          if (error.message !== 'User did not share') {
+            Alert.alert(
+              'Error',
+              `No se pudo compartir el PDF.\n\n${error.message}`
+            );
+          }
         }
         
       } catch (error: any) {
