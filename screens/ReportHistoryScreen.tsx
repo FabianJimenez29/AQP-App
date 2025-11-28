@@ -13,7 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
-import Share from 'react-native-share';
+import * as Sharing from 'expo-sharing';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
@@ -118,6 +118,8 @@ export default function ReportHistoryScreen() {
   useEffect(() => {
     dispatch(fetchUserReports({ page: 1, limit: 50 }));
     loadOrders();
+    // Limpiar caché de PDFs antiguos al cargar la pantalla
+    clearOldPdfCache();
   }, [dispatch]);
 
   const loadOrders = async () => {
@@ -241,135 +243,222 @@ export default function ReportHistoryScreen() {
     return getImageUrl(url);
   };
 
+  // Función para limpiar caché de PDFs antiguos (más de 7 días)
+  const clearOldPdfCache = async () => {
+    try {
+      console.log('🧹 Limpiando caché de PDFs antiguos...');
+      const cacheDir = FileSystem.cacheDirectory;
+      if (!cacheDir) return;
+
+      const files = await FileSystem.readDirectoryAsync(cacheDir);
+      const pdfFiles = files.filter(f => f.endsWith('.pdf'));
+      
+      const now = Date.now();
+      const sevenDaysInMs = 7 * 24 * 60 * 60 * 1000;
+      let deletedCount = 0;
+
+      for (const file of pdfFiles) {
+        const fileUri = cacheDir + file;
+        const fileInfo = await FileSystem.getInfoAsync(fileUri);
+        
+        if (fileInfo.exists && fileInfo.modificationTime) {
+          const fileAge = now - (fileInfo.modificationTime * 1000);
+          
+          if (fileAge > sevenDaysInMs) {
+            await FileSystem.deleteAsync(fileUri, { idempotent: true });
+            deletedCount++;
+            console.log(`  🗑️ Eliminado: ${file}`);
+          }
+        }
+      }
+
+      if (deletedCount > 0) {
+        console.log(`✅ Limpieza completada: ${deletedCount} PDFs eliminados`);
+      } else {
+        console.log('✅ No hay PDFs antiguos para eliminar');
+      }
+    } catch (error) {
+      console.log('⚠️ Error limpiando caché:', error);
+    }
+  };
+
+  // Función auxiliar para descargar con reintentos
+  const downloadPdfWithRetry = async (
+    url: string,
+    fileUri: string,
+    headers: Record<string, string>,
+    maxRetries: number = 3,
+    initialDelayMs: number = 1000
+  ): Promise<string | null> => {
+    let lastError: any = null;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`📥 Intento ${attempt}/${maxRetries} descargando PDF desde: ${url}`);
+
+        const downloadRes = await FileSystem.downloadAsync(url, fileUri, {
+          headers,
+          // timeoutMs eliminado porque no es soportado por expo-file-system
+        });
+
+        if (downloadRes?.uri) {
+          console.log(`✅ PDF descargado exitosamente en intento ${attempt}`);
+          return downloadRes.uri;
+        }
+
+        throw new Error('No se recibió URI de descarga');
+      } catch (error: any) {
+        lastError = error;
+        const errorMsg = error?.message || String(error);
+        console.log(
+          `⚠️ Intento ${attempt} falló: ${errorMsg}. ${attempt < maxRetries ? `Reintentando en ${initialDelayMs * Math.pow(2, attempt - 1)}ms...` : 'Sin más intentos.'}`
+        );
+
+        // No reintentar si es un error de autorización
+        if (errorMsg.includes('401') || errorMsg.includes('unauthorized')) {
+          throw new Error('No autorizado para descargar este PDF');
+        }
+
+        // Esperar antes de reintentar (backoff exponencial)
+        if (attempt < maxRetries) {
+          const delayMs = initialDelayMs * Math.pow(2, attempt - 1); // 1s, 2s, 4s
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+
+    throw new Error(
+      `No se pudo descargar el PDF después de ${maxRetries} intentos. Último error: ${lastError?.message || 'Desconocido'}`
+    );
+  };
+
   const sendReportViaWhatsApp = async (report: Report) => {
+    let localUri: string | null = null;
+
     try {
       if (!token) {
         showError(ErrorMessages.AUTH_REQUIRED);
         return;
       }
 
-      // Primero descargar el PDF del servidor
-      try {
-        setIsDownloading(true);
-        setDownloadProgress(0);
-        
-        console.log('📄 Datos del reporte:', {
-          id: report.id,
-          report_number: report.report_number,
-          project_name: report.project_name
-        });
-        
-        // Construir nombre del archivo
-        const reportNum = report.report_number || 'SIN-NUMERO';
-        // Limpiar caracteres especiales como # que causan problemas en iOS
-        const cleanReportNum = reportNum.replace(/[^a-zA-Z0-9-_]/g, '');
-        let fileName = `Reporte-${cleanReportNum}`;
-        
-        if (report.project_name) {
-          const cleanProjectName = report.project_name
-            .replace(/[^a-zA-Z0-9\s-]/g, '')
-            .trim()
-            .replace(/\s+/g, '-');
-          if (cleanProjectName) {
-            fileName += `-${cleanProjectName}`;
-          }
-        }
-        fileName += '.pdf';
-        
-        console.log('📄 Nombre del archivo:', fileName);
-        
-        const fileUri = FileSystem.cacheDirectory + fileName;
-        const pdfUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf`;
-        
-        console.log('📄 Descargando PDF desde:', pdfUrl);
-        
-        // Crear descarga con callback de progreso
-        const callback = (downloadProgressData: FileSystem.DownloadProgressData) => {
-          const progress = downloadProgressData.totalBytesWritten / downloadProgressData.totalBytesExpectedToWrite;
-          setDownloadProgress(progress);
-          console.log(`📊 Progreso: ${(progress * 100).toFixed(0)}%`);
-        };
+      setIsDownloading(true);
 
-        const downloadResumable = FileSystem.createDownloadResumable(
-          pdfUrl,
-          fileUri,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`,
-            }
-          },
-          callback
-        );
-
-        const downloadResult = await downloadResumable.downloadAsync();
-
-        console.log('📄 Status:', downloadResult?.status);
-
-        if (!downloadResult || downloadResult.status !== 200) {
-          throw new Error(`Error al descargar el PDF (código ${downloadResult?.status})`);
-        }
-
-        // Verificar el archivo
-        const fileInfo = await FileSystem.getInfoAsync(downloadResult.uri);
-        console.log('📄 Archivo descargado:', fileInfo);
-
-        if (!fileInfo.exists || fileInfo.size === 0) {
-          throw new Error('El PDF no se descargó correctamente');
-        }
-
-        const fileSizeMB = (fileInfo.size / 1024 / 1024).toFixed(2);
-        console.log(`✅ PDF listo - ${fileSizeMB} MB`);
-        console.log('📄 Archivo guardado en:', downloadResult.uri);
-
-        setIsDownloading(false);
-
-        // Compartir PDF usando react-native-share
-        console.log('📤 Compartiendo PDF...');
-        console.log('📄 URI:', downloadResult.uri);
-        
-        try {
-          // Opciones mínimas - solo el archivo PDF
-          const shareOptions = {
-            url: downloadResult.uri,
-            type: 'application/pdf',
-            failOnCancel: false
-          };
-
-          console.log('📤 Llamando Share.open...');
-
-          const result = await Share.open(shareOptions);
-          
-          console.log('✅ Share.open completado');
-          console.log('📊 Resultado:', JSON.stringify(result));
-          
-        } catch (error: any) {
-          console.error('❌ Error en Share.open:', error);
-          console.error('   Nombre:', error.name);
-          console.error('   Mensaje:', error.message);
-          
-          // No mostrar error si el usuario canceló
-          if (error.message && !error.message.includes('User did not share') && !error.message.includes('cancelled')) {
-            Alert.alert(
-              'Error al compartir',
-              `No se pudo abrir el menú de compartir.\n\n${error.message}`
-            );
-          }
-        }
-        
-      } catch (error: any) {
-        console.error('❌ Error al generar PDF:', error);
-        console.error('   Mensaje:', error.message);
-        
-        setIsDownloading(false);
-        
-        showConfirm(
-          '❌ Error al generar PDF\n\nNo se pudo descargar el PDF del servidor.\n\n¿Deseas compartir como texto?',
-          () => sendReportAsText(report)
-        );
+      const pdfUrl = `${ApiService.apiUrl}/reports/${report.id}/pdf`;
+      // Nombre simple: NombreProyecto-001.pdf (sin # ni caracteres especiales)
+      let simpleName = report.report_number.replace(/#/g, ''); // Remover #
+      if (report.project_name) {
+        const cleanProjectName = report.project_name.replace(/[^a-zA-Z0-9\s]/g, '').trim();
+        simpleName = `${cleanProjectName}-${simpleName}`;
       }
-    } catch (error) {
-      console.error('Error:', error);
-      showError(ErrorMessages.UNKNOWN_ERROR);
+      const fileName = `${simpleName}.pdf`;
+
+      // Usar documentDirectory para mejor persistencia en Expo Go
+      const downloadDir = FileSystem.documentDirectory || '';
+      const fileUri = `${downloadDir}${fileName}`;
+
+      console.log(`🚀 INICIANDO DESCARGA DE PDF`);
+      console.log(`   Reporte: ${report.id}`);
+      console.log(`   URL: ${pdfUrl}`);
+      console.log(`   Ubicación local: ${fileUri}`);
+
+      // Descargar con reintentos
+      localUri = await downloadPdfWithRetry(
+        pdfUrl,
+        fileUri,
+        { Authorization: `Bearer ${token}` },
+        3,
+        1000
+      );
+
+      if (!localUri) {
+        throw new Error('No se pudo obtener la URI del PDF descargado');
+      }
+
+      console.log(`✅ PDF DESCARGADO: ${localUri}`);
+
+      // Verificar que el archivo existe y tiene contenido
+      const fileInfo = await FileSystem.getInfoAsync(localUri);
+      console.log(`📋 Info del archivo:`, { 
+        existe: fileInfo.exists, 
+        tamaño: fileInfo.exists ? (fileInfo as any).size : undefined,
+        isDirectory: fileInfo.isDirectory 
+      });
+
+      if (!fileInfo.exists) {
+        throw new Error('El archivo PDF no existe en el sistema de archivos');
+      }
+
+      // Solo verificar size si existe
+      if ((fileInfo as any).size === undefined || (fileInfo as any).size === 0) {
+        throw new Error('El archivo PDF está vacío');
+      }
+
+      // Esperar para que iOS procese el archivo - reducido porque PDF es más pequeño
+      console.log(`⏱️ Esperando 1 segundo...`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      setIsDownloading(false);
+
+      // IMPORTANTE: Usar Sharing.shareAsync con la configuración correcta
+      console.log(`📤 Abriendo menú de compartición...`);
+
+      try {
+        const result = await Sharing.shareAsync(localUri, {
+          mimeType: 'application/pdf',
+          dialogTitle: `Compartir ${fileName}`
+        });
+
+        console.log(`✅ Resultado de compartición:`, result);
+
+        // Solo procesar si result no es undefined
+        if (typeof result === 'object' && result !== null && 'action' in result) {
+          // @ts-ignore
+          if (result.action === 'sharedWithDefault' || result.action === 'shared') {
+            // @ts-ignore
+            console.log(`✅ PDF COMPARTIDO CON: ${result.activityName || 'La aplicación seleccionada'}`);
+            // Esperar a que la app se cierre después del envío
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          } else if (
+            // @ts-ignore
+            result.action === 'dismissed'
+          ) {
+            console.log(`ℹ️ Usuario canceló la compartición`);
+            return;
+          }
+        }
+      } catch (error: any) {
+        console.log(`⚠️ Error en Sharing.shareAsync:`, error.message);
+        throw error;
+      }
+
+      // Limpiar después de 10 minutos
+      console.log(`🕐 Programando limpieza en 10 minutos...`);
+      setTimeout(() => {
+        if (localUri) {
+          FileSystem.deleteAsync(localUri, { idempotent: true })
+            .then(() => console.log(`🗑️ PDF limpiado`))
+            .catch(err => console.log(`⚠️ Error limpiando: ${err}`));
+        }
+      }, 600000);
+
+    } catch (error: any) {
+      setIsDownloading(false);
+      const errorMsg = error?.message || String(error);
+      console.error('❌ ERROR:', errorMsg);
+      console.error('   Stack:', error?.stack);
+
+      if (localUri) {
+        FileSystem.deleteAsync(localUri, { idempotent: true }).catch(() => {});
+      }
+
+      Alert.alert(
+        'Error al Compartir PDF',
+        `${errorMsg}\n\n¿Enviar como texto por WhatsApp?`,
+        [
+          { text: 'No', style: 'cancel' },
+          { text: 'Sí', onPress: () => sendReportAsText(report) }
+        ]
+      );
     }
   };
 
