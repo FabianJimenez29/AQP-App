@@ -76,6 +76,7 @@ interface Report {
     cloro_liquido: number;
   };
   equipment?: string[];
+  equipment_check?: any;
   observations?: string;
   materials_delivered?: string;
   received_by?: string;
@@ -148,6 +149,49 @@ export default function ReportHistoryScreen() {
   const openReportDetail = (report: Report) => {
     setSelectedReport(report);
     setModalVisible(true);
+  };
+
+  const openReportPreview = (report: Report) => {
+    // Convertir el formato del reporte del historial al formato esperado por ReportPreviewScreen
+    const reportDataForPreview = {
+      clientName: report.project_name || report.client_name,
+      location: report.location,
+      technician: report.technician,
+      userId: user?.id || 0,
+      entryTime: report.created_at,
+      exitTime: report.created_at,
+      parametersBefore: report.parameters_before || {
+        cl: 0,
+        ph: 0,
+        alk: 0,
+        stabilizer: 0,
+        hardness: 0,
+        salt: 0,
+        temperature: 0,
+      },
+      chemicals: report.chemicals || {
+        tricloro: 0,
+        tabletas: 0,
+        acido: 0,
+        soda: 0,
+        bicarbonato: 0,
+        sal: 0,
+        alguicida: 0,
+        clarificador: 0,
+        cloro_liquido: 0,
+      },
+      equipmentCheck: report.equipment_check || {},
+      photoCloroPh: getCompleteImageUrl(report.photo_cloro_ph) || undefined,
+      photoAlcalinidad: getCompleteImageUrl(report.photo_alcalinidad) || undefined,
+      photoDureza: getCompleteImageUrl(report.photo_dureza) || undefined,
+      photoEstabilizador: getCompleteImageUrl(report.photo_estabilizador) || undefined,
+      materialsDelivered: report.materials_delivered || '',
+      observations: report.observations || '',
+      projectName: report.project_name || report.client_name,
+      reportNumber: report.report_number,
+    };
+
+    navigation.navigate('ReportPreview', { reportData: reportDataForPreview });
   };
 
   const openOrderDetail = (order: Order) => {
@@ -717,7 +761,19 @@ export default function ReportHistoryScreen() {
                   />
                   <Text style={styles.photoText}>Est</Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#666" />
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      openReportPreview(report);
+                    }}
+                    style={styles.previewButton}
+                  >
+                    <Ionicons name="eye-outline" size={18} color="#1976D2" />
+                    <Text style={styles.previewButtonText}>Vista Previa</Text>
+                  </TouchableOpacity>
+                  <Ionicons name="chevron-forward" size={20} color="#666" />
+                </View>
               </View>
             </TouchableOpacity>
           ))
@@ -1254,6 +1310,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  previewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#E3F2FD',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  previewButtonText: {
+    color: '#1976D2',
+    fontSize: 12,
+    fontWeight: '600',
   },
   photosIndicator: {
     flexDirection: 'row',

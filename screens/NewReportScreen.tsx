@@ -116,14 +116,21 @@ export default function NewReportScreen() {
               );
               
               dispatch(finishReport());
+              dispatch(setLoading(false));
               
+              // Mostrar alerta de éxito temporal
               Alert.alert(
-                'Éxito', 
-                'Reporte guardado exitosamente en la base de datos AWS',
+                '✅ Reporte Guardado',
+                'El reporte se guardó exitosamente en la base de datos',
                 [
                   {
                     text: 'OK',
-                    onPress: () => navigation.replace('Dashboard')
+                    onPress: () => {
+                      // Navegar a la vista previa con los datos del reporte
+                      navigation.navigate('ReportPreview', {
+                        reportData: reportToSend
+                      });
+                    }
                   }
                 ]
               );
@@ -131,6 +138,7 @@ export default function NewReportScreen() {
             } catch (error: any) {
               console.error('Error al guardar reporte:', error);
               dispatch(setError(error.message || 'Error al guardar reporte'));
+              dispatch(setLoading(false));
               
               Alert.alert(
                 'Error', 

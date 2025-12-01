@@ -402,21 +402,48 @@ export default function UnifiedNewReportScreen() {
               
               dispatch(incrementTodayReports());
               
+              // Preparar datos del reporte para la vista previa
+              const reportDataForPreview = {
+                clientName: selectedProject.project_name,
+                location: selectedProject.location,
+                technician: user?.name || 'Técnico',
+                userId: user?.id || 0,
+                entryTime: entryTime || new Date().toISOString(),
+                exitTime: new Date().toISOString(),
+                parametersBefore: parametersBefore,
+                chemicals: chemicals,
+                equipmentCheck: equipmentCheck,
+                photoCloroPh: photoCloroPh,
+                photoAlcalinidad: photoAlcalinidad,
+                photoDureza: photoDureza,
+                photoEstabilizador: photoEstabilizador,
+                materialsDelivered: materialsDelivered,
+                observations: observations,
+                projectName: selectedProject.project_name,
+                reportNumber: savedReport?.reportNumber || 'N/A',
+              };
+              
+              console.log('📸 Fotos locales para preview:', {
+                photoCloroPh,
+                photoAlcalinidad,
+                photoDureza,
+                photoEstabilizador,
+              });
+
+              console.log('🔧 Equipment check para preview:', equipmentCheck);
+              
+              // Mostrar alerta de éxito y luego navegar a vista previa
               Alert.alert(
-                '✅ Reporte Enviado Exitosamente',
-                `El reporte ha sido registrado correctamente.\n\n` +
-                `📋 Proyecto: ${selectedProject.project_name}\n` +
-                `📍 Ubicación: ${selectedProject.location}\n\n` +
-                `El PDF será generado y enviado al cliente automáticamente.`,
+                '✅ Reporte Guardado',
+                'El reporte se guardó exitosamente en la base de datos',
                 [
-                  { 
-                    text: 'Ver Reportes', 
-                    onPress: () => navigation.replace('ReportHistory')
-                  },
-                  { 
-                    text: 'Ir al Inicio', 
-                    onPress: () => navigation.replace('Dashboard'),
-                    style: 'cancel'
+                  {
+                    text: 'OK',
+                    onPress: () => {
+                      navigation.navigate('ReportPreview', {
+                        reportData: reportDataForPreview
+                      });
+                    }
                   }
                 ]
               );
@@ -1757,7 +1784,7 @@ const styles = StyleSheet.create({
   },
   photoActions: {
     flexDirection: 'row',
-    gap: 12,
+    // gap is not supported in React Native styles; spacing is handled via margins
   },
   photoActionPrimary: {
     flex: 1,
@@ -1767,7 +1794,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0066CC',
     paddingVertical: 14,
     borderRadius: 12,
-    gap: 8,
+    // gap removed
   },
   photoActionText: {
     color: 'white',
@@ -1784,7 +1811,7 @@ const styles = StyleSheet.create({
     borderColor: '#0066CC',
     paddingVertical: 14,
     borderRadius: 12,
-    gap: 8,
+    // gap removed
   },
   photoActionTextSecondary: {
     color: '#0066CC',
@@ -1893,7 +1920,7 @@ const styles = StyleSheet.create({
   },
   equipmentControls: {
     flexDirection: 'row',
-    gap: 12,
+    // gap removed
     flexWrap: 'wrap',
   },
   aplicaCheckContainer: {
@@ -1979,7 +2006,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 8,
-    gap: 8,
+    // gap removed
   },
   summaryLabel: {
     fontSize: 13,
@@ -2017,9 +2044,10 @@ const styles = StyleSheet.create({
   // Navigation
   navigationButtons: {
     flexDirection: 'row',
-    gap: 12,
+    // gap removed
     paddingHorizontal: 20,
     paddingTop: 20,
+    paddingBottom: 30,
   },
   navButtonPrimary: {
     flex: 1,
@@ -2029,7 +2057,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0066CC',
     paddingVertical: 16,
     borderRadius: 12,
-    gap: 8,
+    // gap removed
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
@@ -2049,7 +2077,7 @@ const styles = StyleSheet.create({
     borderColor: '#0066CC',
     paddingVertical: 16,
     borderRadius: 12,
-    gap: 8,
+    // gap removed
   },
   navButtonText: {
     color: 'white',
@@ -2073,7 +2101,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4caf50',
     paddingVertical: 16,
     borderRadius: 12,
-    gap: 10,
+    // gap removed
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
@@ -2116,7 +2144,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   pickerContainer: {
-    gap: 12,
+    // gap removed
   },
   projectOption: {
     backgroundColor: '#f5f5f5',
@@ -2132,7 +2160,7 @@ const styles = StyleSheet.create({
   projectOptionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    // gap removed
   },
   projectIcon: {
     width: 48,
@@ -2210,7 +2238,7 @@ const styles = StyleSheet.create({
   dropdownContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    // gap removed
     flex: 1,
   },
   dropdownText: {
@@ -2269,7 +2297,7 @@ const styles = StyleSheet.create({
   pickerItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    // gap removed
   },
   pickerItemIcon: {
     width: 56,
