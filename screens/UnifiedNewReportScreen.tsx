@@ -395,7 +395,7 @@ export default function UnifiedNewReportScreen() {
                 photoEstabilizador: !!photoEstabilizadorUrl,
               });
 
-              const savedReport = await ApiService.createReport(reportData as any, token || '');
+              const savedReport: any = await ApiService.createReport(reportData as any, token || '');
               
               setUploadProgress(100);
               setUploadMessage('¡Completado!');
@@ -420,7 +420,7 @@ export default function UnifiedNewReportScreen() {
                 materialsDelivered: materialsDelivered,
                 observations: observations,
                 projectName: selectedProject.project_name,
-                reportNumber: savedReport?.reportNumber || 'N/A',
+                reportNumber: savedReport?.report?.report_number || savedReport?.report_number || 'N/A',
               };
               
               console.log('📸 Fotos locales para preview:', {

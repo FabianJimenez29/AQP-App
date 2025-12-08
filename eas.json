@@ -23,6 +23,7 @@
       }
     },
     "production": {
+      "channel": "aqp-app",
       "android": {
         "buildType": "apk"
       },
