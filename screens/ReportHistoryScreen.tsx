@@ -235,14 +235,13 @@ export default function ReportHistoryScreen() {
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    // Las fechas ya vienen con offset de Costa Rica, no convertir timezone
-    return date.toLocaleString('es-ES', {
+    return date.toLocaleDateString('es-ES', {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      timeZone: 'America/Costa_Rica'
     });
   };
 
