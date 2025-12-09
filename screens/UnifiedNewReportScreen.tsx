@@ -44,14 +44,14 @@ const getCostaRicaTimestamp = () => {
     hour12: false
   });
   
-  // Parsear y convertir a formato ISO con offset de Costa Rica
+  // Parsear y convertir a formato ISO SIN timezone (para que PostgreSQL TIMESTAMP lo guarde tal cual)
   // Formato recibido: "12/09/2024, 16:30:45"
   const [datePart, timePart] = crDateStr.split(', ');
   const [month, day, year] = datePart.split('/');
   const [hours, minutes, seconds] = timePart.split(':');
   
-  // Construir ISO string CON offset de Costa Rica (-06:00)
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:${seconds}-06:00`;
+  // Construir ISO string SIN offset (PostgreSQL TIMESTAMP lo guardará directamente)
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:${seconds}`;
 };
 
 export default function UnifiedNewReportScreen() {
