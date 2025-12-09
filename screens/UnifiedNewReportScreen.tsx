@@ -28,6 +28,32 @@ import { showError, showSuccess, showConfirm, ErrorMessages, SuccessMessages } f
 
 type NavigationProp = StackNavigationProp<any>;
 
+// Función helper para obtener timestamp en zona horaria de Costa Rica (UTC-6)
+const getCostaRicaTimestamp = () => {
+  const now = new Date();
+  
+  // Obtener string de fecha en zona horaria de Costa Rica
+  const crDateStr = now.toLocaleString('en-US', { 
+    timeZone: 'America/Costa_Rica',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+  
+  // Parsear y convertir a formato ISO
+  // Formato: "12/08/2024, 16:30:45"
+  const [datePart, timePart] = crDateStr.split(', ');
+  const [month, day, year] = datePart.split('/');
+  const [hours, minutes, seconds] = timePart.split(':');
+  
+  // Construir ISO string sin zona horaria (será interpretado como está)
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:${seconds}.000`;
+};
+
 export default function UnifiedNewReportScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, token } = useAppSelector((state) => state.auth);
@@ -364,8 +390,8 @@ export default function UnifiedNewReportScreen() {
                 clientName: selectedProject.client_name,
                 location: selectedProject.location,
                 technician: user?.name || 'Técnico',
-                entryTime: entryTime || new Date().toISOString(),
-                exitTime: new Date().toISOString(),
+                entryTime: entryTime || getCostaRicaTimestamp(),
+                exitTime: getCostaRicaTimestamp(),
                 userId: user?.id || 'unknown',
                 // Nuevas 4 fotos
                 photoCloroPh: photoCloroPhUrl,
@@ -385,9 +411,9 @@ export default function UnifiedNewReportScreen() {
                 createdAt: new Date().toISOString(),
               };
 
-              console.log('⏰ Enviando reporte con horas:');
-              console.log('   Entrada:', new Date(entryTime || '').toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' }));
-              console.log('   Salida:', new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' }));
+              console.log('⏰ Enviando reporte con horas (Costa Rica):');
+              console.log('   Entrada:', entryTime);
+              console.log('   Salida:', getCostaRicaTimestamp());
               console.log('📸 Fotos incluidas:', {
                 photoCloroPh: !!photoCloroPhUrl,
                 photoAlcalinidad: !!photoAlcalinidadUrl,
@@ -408,8 +434,8 @@ export default function UnifiedNewReportScreen() {
                 location: selectedProject.location,
                 technician: user?.name || 'Técnico',
                 userId: user?.id || 0,
-                entryTime: entryTime || new Date().toISOString(),
-                exitTime: new Date().toISOString(),
+                entryTime: entryTime || getCostaRicaTimestamp(),
+                exitTime: getCostaRicaTimestamp(),
                 parametersBefore: parametersBefore,
                 chemicals: chemicals,
                 equipmentCheck: equipmentCheck,
@@ -1414,8 +1440,9 @@ export default function UnifiedNewReportScreen() {
                     setShowProjectPicker(false);
                     // Guardar hora de entrada cuando selecciona el proyecto
                     if (!entryTime) {
-                      setEntryTime(new Date().toISOString());
-                      console.log('⏰ Hora de entrada registrada:', new Date().toLocaleString('es-CR', { timeZone: 'America/Costa_Rica' }));
+                      const crTime = getCostaRicaTimestamp();
+                      setEntryTime(crTime);
+                      console.log('⏰ Hora de entrada registrada (Costa Rica):', crTime);
                     }
                   }}
                 >

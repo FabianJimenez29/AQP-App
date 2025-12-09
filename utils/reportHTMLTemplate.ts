@@ -4,22 +4,33 @@
  */
 
 export const generateReportHTML = (report: any, logoBase64: string = ''): string => {
-  // Formatear fechas en zona horaria de Costa Rica
+  // Formatear fechas - las fechas vienen como strings ISO SIN timezone, representan hora de Costa Rica
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No registrado';
+    // Parsear directamente como hora local (sin conversión)
     const date = new Date(dateString);
-    return date.toLocaleString('es-CR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-      timeZone: 'America/Costa_Rica'
-    });
+    
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const day = date.getDate();
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    
+    const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // 0 = 12
+    const minutesStr = String(minutes).padStart(2, '0');
+    
+    return `${day} de ${monthNames[month]} de ${year}, ${hours}:${minutesStr} ${ampm}`;
   };
 
-  const currentDate = formatDate(new Date().toISOString());
+  // Obtener fecha actual de Costa Rica
+  const now = new Date();
+  const crNow = now.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' });
+  const currentDate = formatDate(new Date(crNow).toISOString());
   const entryTime = formatDate(report.entryTime);
   const exitTime = formatDate(report.exitTime);
 
