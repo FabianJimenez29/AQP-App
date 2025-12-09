@@ -4,17 +4,20 @@
  */
 
 export const generateReportHTML = (report: any, logoBase64: string = ''): string => {
-  // Formatear fechas - mostrar tal como vienen del dispositivo
+  // Formatear fechas - PostgreSQL guarda en UTC, convertir a Costa Rica para mostrar
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No registrado';
-    // Parsear la fecha tal como viene (hora del dispositivo)
+    // Parsear y convertir a zona horaria de Costa Rica
     const date = new Date(dateString);
     
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const day = date.getDate();
-    let hours = date.getHours();
-    const minutes = date.getMinutes();
+    // Convertir a Costa Rica manualmente
+    const crDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' }));
+    
+    const year = crDate.getFullYear();
+    const month = crDate.getMonth();
+    const day = crDate.getDate();
+    let hours = crDate.getHours();
+    const minutes = crDate.getMinutes();
     
     const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
@@ -27,7 +30,7 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
     return `${day} de ${monthNames[month]} de ${year}, ${hours}:${minutesStr} ${ampm}`;
   };
 
-  // Obtener fecha actual del dispositivo
+  // Obtener fecha actual de Costa Rica
   const now = new Date();
   const currentDate = formatDate(now.toISOString());
   const entryTime = formatDate(report.entryTime);
