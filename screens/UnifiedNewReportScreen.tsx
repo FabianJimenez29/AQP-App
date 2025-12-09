@@ -25,33 +25,15 @@ import { Parameters, Chemicals, EquipmentCheck } from '../types';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Colors from '../constants/colors';
 import { showError, showSuccess, showConfirm, ErrorMessages, SuccessMessages } from '../components/ui/CustomAlert';
+import { formatInTimeZone } from 'date-fns-tz';
 
 type NavigationProp = StackNavigationProp<any>;
 
-// Función helper para obtener timestamp en zona horaria de Costa Rica (UTC-6)
+// Función helper para obtener timestamp en zona horaria de Costa Rica usando date-fns-tz
 const getCostaRicaTimestamp = () => {
   const now = new Date();
-  
-  // Obtener string de fecha en zona horaria de Costa Rica
-  const crDateStr = now.toLocaleString('en-US', { 
-    timeZone: 'America/Costa_Rica',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false
-  });
-  
-  // Parsear y convertir a formato ISO CON offset de Costa Rica (-06:00)
-  // Formato recibido: "12/09/2024, 16:30:45"
-  const [datePart, timePart] = crDateStr.split(', ');
-  const [month, day, year] = datePart.split('/');
-  const [hours, minutes, seconds] = timePart.split(':');
-  
-  // Construir ISO string CON offset para que TIMESTAMPTZ lo guarde correctamente
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:${seconds}-06:00`;
+  // Formatear directamente en zona horaria de Costa Rica con offset
+  return formatInTimeZone(now, 'America/Costa_Rica', "yyyy-MM-dd'T'HH:mm:ssXXX");
 };
 
 export default function UnifiedNewReportScreen() {

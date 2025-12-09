@@ -24,6 +24,7 @@ import ApiService from '../services/api';
 import PoolHeader from '../components/ui/PoolHeader';
 import Colors from '../constants/colors';
 import { showError, showConfirm, ErrorMessages } from '../components/ui/CustomAlert';
+import { formatInTimeZone } from 'date-fns-tz';
 
 type NavigationProp = StackNavigationProp<any>;
 
@@ -234,15 +235,13 @@ export default function ReportHistoryScreen() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('es-ES', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'America/Costa_Rica'
-    });
+    try {
+      const date = new Date(dateString);
+      // Formatear en zona horaria de Costa Rica usando date-fns-tz
+      return formatInTimeZone(date, 'America/Costa_Rica', 'dd/MM/yyyy HH:mm');
+    } catch (error) {
+      return 'Fecha inválida';
+    }
   };
 
   const getStatusColor = (report: Report) => {

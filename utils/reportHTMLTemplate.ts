@@ -3,36 +3,29 @@
  * Basado en el diseño del backend para mantener consistencia
  */
 
+import { formatInTimeZone } from 'date-fns-tz';
+import { es } from 'date-fns/locale';
+
 export const generateReportHTML = (report: any, logoBase64: string = ''): string => {
-  // Formatear fechas - PostgreSQL guarda en UTC, convertir a Costa Rica para mostrar
+  // Formatear fechas usando date-fns-tz para convertir a Costa Rica
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No registrado';
-    // Parsear y convertir a zona horaria de Costa Rica
-    const date = new Date(dateString);
-    
-    // Convertir a Costa Rica manualmente
-    const crDate = new Date(date.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' }));
-    
-    const year = crDate.getFullYear();
-    const month = crDate.getMonth();
-    const day = crDate.getDate();
-    let hours = crDate.getHours();
-    const minutes = crDate.getMinutes();
-    
-    const monthNames = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
-      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
-    
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12; // 0 = 12
-    const minutesStr = String(minutes).padStart(2, '0');
-    
-    return `${day} de ${monthNames[month]} de ${year}, ${hours}:${minutesStr} ${ampm}`;
+    try {
+      const date = new Date(dateString);
+      // Formatear en zona horaria de Costa Rica
+      return formatInTimeZone(
+        date,
+        'America/Costa_Rica',
+        "d 'de' MMMM 'de' yyyy, h:mm a",
+        { locale: es }
+      );
+    } catch (error) {
+      return 'Fecha inválida';
+    }
   };
 
   // Obtener fecha actual de Costa Rica
-  const now = new Date();
-  const currentDate = formatDate(now.toISOString());
+  const currentDate = formatDate(new Date().toISOString());
   const entryTime = formatDate(report.entryTime);
   const exitTime = formatDate(report.exitTime);
 
