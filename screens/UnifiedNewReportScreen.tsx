@@ -44,14 +44,14 @@ const getCostaRicaTimestamp = () => {
     hour12: false
   });
   
-  // Parsear y convertir a formato ISO
-  // Formato: "12/08/2024, 16:30:45"
+  // Parsear y convertir a formato ISO con offset de Costa Rica
+  // Formato recibido: "12/09/2024, 16:30:45"
   const [datePart, timePart] = crDateStr.split(', ');
   const [month, day, year] = datePart.split('/');
   const [hours, minutes, seconds] = timePart.split(':');
   
-  // Construir ISO string sin zona horaria (será interpretado como está)
-  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:${seconds}.000`;
+  // Construir ISO string CON offset de Costa Rica (-06:00)
+  return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours}:${minutes}:${seconds}-06:00`;
 };
 
 export default function UnifiedNewReportScreen() {
