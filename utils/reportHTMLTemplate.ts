@@ -4,10 +4,10 @@
  */
 
 export const generateReportHTML = (report: any, logoBase64: string = ''): string => {
-  // Formatear fechas - las fechas vienen como strings ISO SIN timezone, representan hora de Costa Rica
+  // Formatear fechas - mostrar tal como vienen del dispositivo
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No registrado';
-    // Parsear directamente como hora local (sin conversión)
+    // Parsear la fecha tal como viene (hora del dispositivo)
     const date = new Date(dateString);
     
     const year = date.getFullYear();
@@ -27,10 +27,9 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
     return `${day} de ${monthNames[month]} de ${year}, ${hours}:${minutesStr} ${ampm}`;
   };
 
-  // Obtener fecha actual de Costa Rica
+  // Obtener fecha actual del dispositivo
   const now = new Date();
-  const crNow = now.toLocaleString('en-US', { timeZone: 'America/Costa_Rica' });
-  const currentDate = formatDate(new Date(crNow).toISOString());
+  const currentDate = formatDate(now.toISOString());
   const entryTime = formatDate(report.entryTime);
   const exitTime = formatDate(report.exitTime);
 
