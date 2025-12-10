@@ -15,6 +15,7 @@ import ProfileScreen from './screens/ProfileScreen';
 import ProductsScreen from './screens/ProductsScreen';
 import CartScreen from './screens/CartScreen';
 import ReportPreviewScreen from './screens/ReportPreviewScreen';
+import AdminReportPreviewScreen from './screens/AdminReportPreviewScreen';
 
 // Admin screens
 import AdminDashboardScreen from './screens/AdminDashboardScreen';
@@ -71,6 +72,7 @@ function AppContent() {
         />
         <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
         <Stack.Screen name="AdminReports" component={AdminReportsScreen} />
+        <Stack.Screen name="AdminReportPreview" component={AdminReportPreviewScreen} />
         <Stack.Screen name="AdminInventory" component={AdminInventoryScreen} />
         <Stack.Screen name="AdminProjects" component={AdminProjectsScreen} />
         <Stack.Screen name="AdminOrders" component={AdminOrdersScreen} />

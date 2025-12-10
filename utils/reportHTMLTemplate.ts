@@ -11,12 +11,24 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No registrado';
     try {
-      const date = new Date(dateString);
-      // Formatear en zona horaria de Costa Rica
+      // Si el string tiene el formato 'YYYY-MM-DD HH:MM:SS', convertirlo a ISO
+      let date;
+      if (dateString.includes(' ') && !dateString.includes('T')) {
+        const isoString = dateString.replace(' ', 'T');
+        date = new Date(isoString);
+      } else {
+        date = new Date(dateString);
+      }
+      
+      if (isNaN(date.getTime())) {
+        return 'Fecha inválida';
+      }
+      
+      // Formatear solo la fecha
       return formatInTimeZone(
         date,
         'America/Costa_Rica',
-        "d 'de' MMMM 'de' yyyy, h:mm a",
+        "d 'de' MMMM 'de' yyyy",
         { locale: es }
       );
     } catch (error) {
@@ -24,10 +36,39 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
     }
   };
 
+  const formatTime = (dateString: string) => {
+    if (!dateString) return 'No registrado';
+    try {
+      // Si el string tiene el formato 'YYYY-MM-DD HH:MM:SS', convertirlo a ISO
+      let date;
+      if (dateString.includes(' ') && !dateString.includes('T')) {
+        const isoString = dateString.replace(' ', 'T');
+        date = new Date(isoString);
+      } else {
+        date = new Date(dateString);
+      }
+      
+      if (isNaN(date.getTime())) {
+        return 'Hora inválida';
+      }
+      
+      // Formatear solo la hora
+      return formatInTimeZone(
+        date,
+        'America/Costa_Rica',
+        "h:mm a",
+        { locale: es }
+      );
+    } catch (error) {
+      return 'Hora inválida';
+    }
+  };
+
   // Obtener fecha actual de Costa Rica
   const currentDate = formatDate(new Date().toISOString());
-  const entryTime = formatDate(report.entryTime);
-  const exitTime = formatDate(report.exitTime);
+  const entryDate = formatDate(report.entryTime);
+  const entryTime = formatTime(report.entryTime);
+  const exitTime = formatTime(report.exitTime);
 
   // Parámetros antes
   const paramsBefore = report.parametersBefore || {};
@@ -575,15 +616,15 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
         </div>
         <div class="info-card">
           <div class="info-label">Fecha del Servicio</div>
-          <div class="info-value">${formatDate(report.entryTime).split(',')[0]}</div>
+          <div class="info-value">${entryDate}</div>
         </div>
         <div class="info-card">
           <div class="info-label">Hora de Entrada</div>
-          <div class="info-value">${entryTime.split(',')[1] || 'N/A'}</div>
+          <div class="info-value">${entryTime}</div>
         </div>
         <div class="info-card">
           <div class="info-label">Hora de Salida</div>
-          <div class="info-value">${exitTime.split(',')[1] || 'N/A'}</div>
+          <div class="info-value">${exitTime}</div>
         </div>
       </div>
     </div>

@@ -157,14 +157,44 @@ export default function ReportHistoryScreen() {
   };
 
   const openReportPreview = (report: Report) => {
+    console.log('📋 Opening report preview for:', report.report_number);
+    console.log('📅 entry_date:', report.entry_date, 'entry_time_only:', report.entry_time_only);
+    console.log('📅 exit_date:', report.exit_date, 'exit_time_only:', report.exit_time_only);
+    console.log('📅 created_at:', report.created_at);
+    
+    // Extraer solo la fecha en formato YYYY-MM-DD
+    const getDatePart = (dateValue: any): string | null => {
+      if (!dateValue) return null;
+      if (typeof dateValue === 'string') {
+        // Si es string, tomar solo los primeros 10 caracteres (YYYY-MM-DD)
+        return dateValue.substring(0, 10);
+      }
+      return null;
+    };
+    
+    // Construir los timestamps correctamente
+    const entryDate = getDatePart(report.entry_date);
+    const exitDate = getDatePart(report.exit_date);
+    
+    const entryTimestamp = (entryDate && report.entry_time_only) 
+      ? `${entryDate}T${report.entry_time_only}`
+      : (report.created_at ? report.created_at.replace(' ', 'T') : new Date().toISOString());
+    
+    const exitTimestamp = (exitDate && report.exit_time_only)
+      ? `${exitDate}T${report.exit_time_only}`
+      : (report.created_at ? report.created_at.replace(' ', 'T') : new Date().toISOString());
+    
+    console.log('🕐 entryTimestamp:', entryTimestamp);
+    console.log('🕐 exitTimestamp:', exitTimestamp);
+    
     // Convertir el formato del reporte del historial al formato esperado por ReportPreviewScreen
     const reportDataForPreview = {
       clientName: report.project_name || report.client_name,
       location: report.location,
       technician: report.technician,
       userId: user?.id || 0,
-      entryTime: report.entry_date && report.entry_time_only ? `${report.entry_date}T${report.entry_time_only}` : report.created_at,
-      exitTime: report.exit_date && report.exit_time_only ? `${report.exit_date}T${report.exit_time_only}` : report.created_at,
+      entryTime: entryTimestamp,
+      exitTime: exitTimestamp,
       parametersBefore: report.parameters_before || {
         cl: 0,
         ph: 0,
@@ -726,6 +756,10 @@ export default function ReportHistoryScreen() {
                     <Ionicons name="images" size={16} color="#4CAF50" style={styles.photoIcon} />
                   )}
                 </View>
+              </View>
+
+              <View style={styles.reportDateContainer}>
+                <Ionicons name="calendar-outline" size={14} color="#666" />
                 <Text style={styles.reportDate}>{formatDate(report.created_at)}</Text>
               </View>
               
@@ -772,7 +806,7 @@ export default function ReportHistoryScreen() {
                     }}
                     style={styles.previewButton}
                   >
-                    <Ionicons name="eye-outline" size={18} color="#1976D2" />
+                    <Ionicons name="eye-outline" size={16} color="#FFFFFF" />
                     <Text style={styles.previewButtonText}>Vista Previa</Text>
                   </TouchableOpacity>
                   <Ionicons name="chevron-forward" size={20} color="#666" />
@@ -1247,12 +1281,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    overflow: 'visible',
   },
   reportHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   reportTitleSection: {
     flexDirection: 'row',
@@ -1264,6 +1299,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#1976D2',
     marginRight: 10,
+  },
+  reportDateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#f5f5f5',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    marginBottom: 12,
   },
   statusBadge: {
     paddingHorizontal: 12,
@@ -1293,8 +1338,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   reportDate: {
-    fontSize: 12,
+    fontSize: 13,
     color: '#666',
+    fontWeight: '500',
   },
   reportInfo: {
     marginBottom: 12,
@@ -1317,38 +1363,48 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#eee',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-  },
-  previewButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#E3F2FD',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  previewButtonText: {
-    color: '#1976D2',
-    fontSize: 12,
-    fontWeight: '600',
+    flexShrink: 0,
   },
   photosIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    flex: 1,
+  },
+  previewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1976D2',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  previewButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   photoText: {
     fontSize: 12,
     color: '#666',
-    marginLeft: 4,
-    marginRight: 12,
+    marginLeft: 2,
+    marginRight: 8,
   },
   photoIcon: {
-    marginLeft: 8,
+    marginLeft: 4,
   },
   modalContainer: {
     flex: 1,

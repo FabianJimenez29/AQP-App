@@ -37,7 +37,11 @@ interface Report {
   received_by?: string;
   entry_time_only?: string;
   exit_time_only?: string;
+  entry_date?: string;
+  exit_date?: string;
   created_at: string;
+  created_date?: string;
+  created_time?: string;
   user?: {
     name: string;
   };
@@ -233,16 +237,31 @@ export default function AdminReportsScreen() {
   };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    // Convertir a hora de Costa Rica (UTC-6)
-    return date.toLocaleDateString('es-ES', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'America/Costa_Rica',
-    });
+    if (!dateString) return 'Sin fecha';
+    try {
+      // Si el string tiene formato 'YYYY-MM-DD HH:MM:SS', convertirlo a ISO
+      let dateStr = dateString;
+      if (dateString.includes(' ') && !dateString.includes('T')) {
+        dateStr = dateString.replace(' ', 'T');
+      }
+      const date = new Date(dateStr);
+      
+      if (isNaN(date.getTime())) {
+        return 'Fecha inválida';
+      }
+      
+      // Convertir a hora de Costa Rica (UTC-6)
+      return date.toLocaleDateString('es-ES', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: 'America/Costa_Rica',
+      });
+    } catch (error) {
+      return 'Fecha inválida';
+    }
   };
 
   const getPoolTypeIcon = (poolType: string) => {
@@ -267,6 +286,63 @@ export default function AdminReportsScreen() {
   const closeDetailModal = () => {
     setDetailModalVisible(false);
     setSelectedReport(null);
+  };
+
+  const openReportPreview = () => {
+    if (!selectedReport) return;
+    
+    // Extraer solo la fecha en formato YYYY-MM-DD
+    const getDatePart = (dateValue: any): string | null => {
+      if (!dateValue) return null;
+      if (typeof dateValue === 'string') {
+        return dateValue.substring(0, 10);
+      }
+      return null;
+    };
+    
+    // Construir los timestamps correctamente
+    const entryDate = getDatePart(selectedReport.entry_date);
+    const exitDate = getDatePart(selectedReport.exit_date);
+    
+    const entryTimestamp = (entryDate && selectedReport.entry_time_only) 
+      ? `${entryDate}T${selectedReport.entry_time_only}`
+      : (selectedReport.created_at ? selectedReport.created_at.replace(' ', 'T') : new Date().toISOString());
+    
+    const exitTimestamp = (exitDate && selectedReport.exit_time_only)
+      ? `${exitDate}T${selectedReport.exit_time_only}`
+      : (selectedReport.created_at ? selectedReport.created_at.replace(' ', 'T') : new Date().toISOString());
+    
+    // Helper para construir URLs completas de imágenes
+    const getFullImageUrl = (url: string | undefined | null): string | undefined => {
+      if (!url) return undefined;
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+      return `https://api.reportacr.lat${url}`;
+    };
+    
+    const reportDataForPreview = {
+      clientName: selectedReport.project_name || selectedReport.client_name,
+      location: selectedReport.location || '',
+      technician: selectedReport.technician || selectedReport.user_name || '',
+      userId: 0,
+      entryTime: entryTimestamp,
+      exitTime: exitTimestamp,
+      parametersBefore: selectedReport.parameters_before || {},
+      chemicals: selectedReport.chemicals || {},
+      equipmentCheck: selectedReport.equipment_check || {},
+      photoCloroPh: getFullImageUrl(selectedReport.photo_cloro_ph),
+      photoAlcalinidad: getFullImageUrl(selectedReport.photo_alcalinidad),
+      photoDureza: getFullImageUrl(selectedReport.photo_dureza),
+      photoEstabilizador: getFullImageUrl(selectedReport.photo_estabilizador),
+      materialsDelivered: selectedReport.materials_delivered || '',
+      observations: selectedReport.observations || '',
+      projectName: selectedReport.project_name || selectedReport.client_name,
+      reportNumber: selectedReport.report_number,
+    };
+
+    closeDetailModal();
+    navigation.navigate('AdminReportPreview' as never, { reportData: reportDataForPreview } as never);
   };
 
   const handleSendWhatsApp = async () => {
@@ -410,6 +486,9 @@ export default function AdminReportsScreen() {
                       />
                     </View>
                     <View style={styles.reportInfo}>
+                      <View style={styles.reportNumberContainer}>
+                        <Text style={styles.reportNumberBadge}>{report.report_number}</Text>
+                      </View>
                       <Text style={styles.reportClient}>{report.client_name}</Text>
                       <Text style={styles.reportProject}>{report.project_name}</Text>
                       <View style={styles.reportMeta}>
@@ -471,12 +550,20 @@ export default function AdminReportsScreen() {
               <Ionicons name="close" size={24} color="#0F172A" />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Detalles del Reporte</Text>
-            <TouchableOpacity 
-              onPress={handleSendWhatsApp} 
-              style={styles.whatsappButton}
-            >
-              <Ionicons name="logo-whatsapp" size={24} color="#25D366" />
-            </TouchableOpacity>
+            <View style={styles.headerButtons}>
+              <TouchableOpacity 
+                onPress={openReportPreview} 
+                style={styles.previewButton}
+              >
+                <Ionicons name="eye-outline" size={22} color="#0284C7" />
+              </TouchableOpacity>
+              <TouchableOpacity 
+                onPress={handleSendWhatsApp} 
+                style={styles.whatsappButton}
+              >
+                <Ionicons name="logo-whatsapp" size={22} color="#25D366" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {selectedReport && (
@@ -824,6 +911,19 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
   },
+  reportNumberContainer: {
+    marginBottom: 4,
+  },
+  reportNumberBadge: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0284C7',
+    backgroundColor: '#E0F2FE',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
   reportClient: {
     fontSize: 16,
     fontWeight: '600',
@@ -886,6 +986,18 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     padding: 8,
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  previewButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#E0F2FE',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   whatsappButton: {
     width: 40,
