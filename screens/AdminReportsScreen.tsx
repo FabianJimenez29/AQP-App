@@ -35,8 +35,8 @@ interface Report {
   user_name?: string;
   user_email?: string;
   received_by?: string;
-  entry_time?: string;
-  exit_time?: string;
+  entry_time_only?: string;
+  exit_time_only?: string;
   created_at: string;
   user?: {
     name: string;
@@ -531,19 +531,19 @@ export default function AdminReportsScreen() {
                   <Text style={styles.infoLabel}>Técnico:</Text>
                   <Text style={styles.infoValue}>{selectedReport.technician || selectedReport.user_name || 'N/A'}</Text>
                 </View>
-                {selectedReport.entry_time && (
+                {selectedReport.entry_time_only && (
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Hora de Entrada:</Text>
                     <Text style={styles.infoValue}>
-                      {new Date(selectedReport.entry_time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                      {selectedReport.entry_time_only.substring(0, 5)}
                     </Text>
                   </View>
                 )}
-                {selectedReport.exit_time && (
+                {selectedReport.exit_time_only && (
                   <View style={styles.infoRow}>
                     <Text style={styles.infoLabel}>Hora de Salida:</Text>
                     <Text style={styles.infoValue}>
-                      {new Date(selectedReport.exit_time).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                      {selectedReport.exit_time_only.substring(0, 5)}
                     </Text>
                   </View>
                 )}

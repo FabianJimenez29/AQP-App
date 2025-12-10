@@ -40,6 +40,10 @@ interface Report {
   location: string;
   technician: string;
   created_at: string;
+  entry_date?: string;
+  entry_time_only?: string;
+  exit_date?: string;
+  exit_time_only?: string;
   photo_cloro_ph?: string;
   photo_alcalinidad?: string;
   photo_dureza?: string;
@@ -159,8 +163,8 @@ export default function ReportHistoryScreen() {
       location: report.location,
       technician: report.technician,
       userId: user?.id || 0,
-      entryTime: report.created_at,
-      exitTime: report.created_at,
+      entryTime: report.entry_date && report.entry_time_only ? `${report.entry_date}T${report.entry_time_only}` : report.created_at,
+      exitTime: report.exit_date && report.exit_time_only ? `${report.exit_date}T${report.exit_time_only}` : report.created_at,
       parametersBefore: report.parameters_before || {
         cl: 0,
         ph: 0,
