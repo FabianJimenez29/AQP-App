@@ -40,6 +40,7 @@ interface Report {
   location: string;
   technician: string;
   created_at: string;
+  created_date?: string;
   entry_date?: string;
   entry_time_only?: string;
   exit_date?: string;
@@ -224,6 +225,7 @@ export default function ReportHistoryScreen() {
       observations: report.observations || '',
       projectName: report.project_name || report.client_name,
       reportNumber: report.report_number,
+      created_date: getDatePart(report.created_date),
     };
 
     navigation.navigate('ReportPreview', { reportData: reportDataForPreview });

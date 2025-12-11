@@ -76,7 +76,8 @@ export interface Report {
   receivedBy: string;
   signature?: string; 
   signatureKey?: string; 
-  createdAt: string; 
+  createdAt: string;
+  created_date?: string; 
 }
 
 export interface AuthState {

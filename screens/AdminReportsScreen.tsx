@@ -339,6 +339,7 @@ export default function AdminReportsScreen() {
       observations: selectedReport.observations || '',
       projectName: selectedReport.project_name || selectedReport.client_name,
       reportNumber: selectedReport.report_number,
+      created_date: getDatePart(selectedReport.created_date),
     };
 
     closeDetailModal();

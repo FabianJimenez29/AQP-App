@@ -11,11 +11,17 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No registrado';
     try {
-      // Si el string tiene el formato 'YYYY-MM-DD HH:MM:SS', convertirlo a ISO
       let date;
+      
+      // Si viene en formato 'YYYY-MM-DD HH:MM:SS' o 'YYYY-MM-DDTHH:MM:SS'
       if (dateString.includes(' ') && !dateString.includes('T')) {
+        // Agregar T para ISO
         const isoString = dateString.replace(' ', 'T');
         date = new Date(isoString);
+      } else if (dateString.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        // Si es solo fecha YYYY-MM-DD, tratarla como fecha local (no UTC)
+        const [year, month, day] = dateString.split('-').map(Number);
+        date = new Date(year, month - 1, day);
       } else {
         date = new Date(dateString);
       }
@@ -39,11 +45,20 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
   const formatTime = (dateString: string) => {
     if (!dateString) return 'No registrado';
     try {
-      // Si el string tiene el formato 'YYYY-MM-DD HH:MM:SS', convertirlo a ISO
       let date;
+      
+      // Si viene en formato 'YYYY-MM-DD HH:MM:SS' o 'YYYY-MM-DDTHH:MM:SS'
       if (dateString.includes(' ') && !dateString.includes('T')) {
         const isoString = dateString.replace(' ', 'T');
         date = new Date(isoString);
+      } else if (dateString.match(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)) {
+        // Ya es formato ISO
+        date = new Date(dateString);
+      } else if (dateString.match(/^\d{2}:\d{2}:\d{2}$/)) {
+        // Si es solo hora HH:MM:SS, usar fecha de hoy
+        const today = new Date();
+        const [hours, minutes, seconds] = dateString.split(':').map(Number);
+        date = new Date(today.getFullYear(), today.getMonth(), today.getDate(), hours, minutes, seconds);
       } else {
         date = new Date(dateString);
       }
@@ -66,7 +81,31 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
 
   // Obtener fecha actual de Costa Rica
   const currentDate = formatDate(new Date().toISOString());
-  const entryDate = formatDate(report.entryTime);
+  // Debug completo del objeto report
+  console.log('🔍 REPORT COMPLETO:', JSON.stringify(report, null, 2));
+  console.log('📅 created_date:', report.created_date);
+  console.log('📅 createdDate:', report.createdDate);
+  console.log('📅 created-date:', report['created-date']);
+  
+  // Formatear created_date directamente desde el string YYYY-MM-DD
+  const formatServiceDate = (dateString: string) => {
+    if (!dateString) return 'No registrado';
+    
+    // dateString viene como 'YYYY-MM-DD'
+    const [year, month, day] = dateString.split('-');
+    
+    const months = [
+      'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+      'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+    ];
+    
+    const monthIndex = parseInt(month, 10) - 1;
+    const monthName = months[monthIndex];
+    
+    return `${parseInt(day, 10)} de ${monthName} de ${year}`;
+  };
+  
+  const serviceDate = report.created_date ? formatServiceDate(report.created_date) : 'No registrado';
   const entryTime = formatTime(report.entryTime);
   const exitTime = formatTime(report.exitTime);
 
@@ -616,7 +655,7 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
         </div>
         <div class="info-card">
           <div class="info-label">Fecha del Servicio</div>
-          <div class="info-value">${entryDate}</div>
+          <div class="info-value">${serviceDate}</div>
         </div>
         <div class="info-card">
           <div class="info-label">Hora de Entrada</div>
