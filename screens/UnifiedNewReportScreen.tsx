@@ -565,7 +565,21 @@ export default function UnifiedNewReportScreen() {
         <View style={styles.headerContent}>
           <TouchableOpacity 
             style={styles.backButton}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              if (currentStep === 1) {
+                // Si está en el primer paso, mostrar confirmación para salir
+                showConfirm(
+                  '¿Estás seguro de que deseas salir del reporte? Se perderán los datos ingresados.',
+                  () => navigation.goBack(),
+                  undefined,
+                  'Salir',
+                  'Cancelar'
+                );
+              } else {
+                // Si no está en el primer paso, retroceder
+                setCurrentStep(currentStep - 1);
+              }
+            }}
           >
             <Ionicons name="arrow-back" size={24} color="#1a1a1a" />
           </TouchableOpacity>
@@ -596,7 +610,11 @@ export default function UnifiedNewReportScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.stepIndicators}>
-          <View style={styles.stepIndicatorsContainer}>
+          <ScrollView 
+            horizontal 
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.stepIndicatorsContainer}
+          >
             {[
               { num: 1, icon: 'home', label: 'Proyecto' },
               { num: 2, icon: 'flask-outline', label: 'Cl/pH' },
@@ -608,13 +626,26 @@ export default function UnifiedNewReportScreen() {
               { num: 8, icon: 'construct', label: 'Equipos' },
               { num: 9, icon: 'clipboard', label: 'Final' },
             ].map((step) => (
-              <View
+              <TouchableOpacity
                 key={step.num}
                 style={[
                   styles.stepIndicator,
                   currentStep === step.num && styles.stepIndicatorActive,
                   currentStep > step.num && styles.stepIndicatorCompleted,
                 ]}
+                onPress={() => {
+                  // Permitir navegar solo a pasos completados o al paso actual
+                  if (step.num <= currentStep) {
+                    setCurrentStep(step.num);
+                  } else {
+                    Alert.alert(
+                      'Paso no disponible',
+                      'Debes completar los pasos anteriores primero',
+                      [{ text: 'OK' }]
+                    );
+                  }
+                }}
+                activeOpacity={0.7}
               >
                 <View style={[
                   styles.stepIcon,
@@ -633,9 +664,9 @@ export default function UnifiedNewReportScreen() {
                 ]}>
                   {step.label}
                 </Text>
-              </View>
+              </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         </View>
 
         <View style={styles.content}>

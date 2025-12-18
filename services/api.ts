@@ -164,6 +164,17 @@ class ApiService {
     });
   }
 
+  async updateReport(token: string, reportId: string, updateData: Partial<Report>): Promise<Report> {
+    return this.request<Report>(`/reports/${reportId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(updateData),
+    });
+  }
+
   async getReports(token: string): Promise<Report[]> {
     return this.request<Report[]>('/reports', {
       headers: {

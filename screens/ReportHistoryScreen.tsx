@@ -11,9 +11,11 @@ import {
   Linking,
   Platform,
   Alert,
+  TextInput,
 } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
+import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { useAppSelector, useAppDispatch } from '../store/hooks';
@@ -115,12 +117,18 @@ export default function ReportHistoryScreen() {
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [orderModalVisible, setOrderModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editingReport, setEditingReport] = useState<Report | null>(null);
+  const [editFormData, setEditFormData] = useState<any>({});
+  const [editingField, setEditingField] = useState<{key: string, label: string, value: string, type: string} | null>(null);
+  const [newPhotos, setNewPhotos] = useState<{[key: string]: string}>({});
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'reports' | 'orders'>('reports');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUserReports({ page: 1, limit: 50 }));
@@ -229,6 +237,152 @@ export default function ReportHistoryScreen() {
     };
 
     navigation.navigate('ReportPreview', { reportData: reportDataForPreview });
+  };
+
+  const openEditModal = (report: Report) => {
+    setEditingReport({...report});
+    setEditFormData({
+      observations: report.observations || '',
+      materials_delivered: report.materials_delivered || '',
+      parameters_before: {...(report.parameters_before || {})},
+      chemicals: {...(report.chemicals || {})},
+      equipment_check: {...(report.equipment_check || {})},
+      dureza_aplica: report.dureza_aplica || false,
+      estabilizador_aplica: report.estabilizador_aplica || false,
+      sal_aplica: report.sal_aplica || false,
+    });
+    setNewPhotos({});
+    setEditModalVisible(true);
+  };
+
+  const closeEditModal = () => {
+    setEditModalVisible(false);
+    setEditingReport(null);
+    setEditFormData({});
+    setEditingField(null);
+    setNewPhotos({});
+  };
+
+  const handlePickImage = async (photoType: string) => {
+    Alert.alert(
+      '📸 Seleccionar Imagen',
+      '¿De dónde deseas obtener la imagen?',
+      [
+        {
+          text: 'Cámara',
+          onPress: async () => {
+            try {
+              const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
+              
+              if (permissionResult.granted === false) {
+                Alert.alert('Permiso Requerido', 'Necesitas dar permiso para acceder a la cámara');
+                return;
+              }
+
+              const result = await ImagePicker.launchCameraAsync({
+                allowsEditing: true,
+                quality: 0.7,
+              });
+
+              if (!result.canceled && result.assets[0]) {
+                setNewPhotos(prev => ({
+                  ...prev,
+                  [photoType]: result.assets[0].uri
+                }));
+              }
+            } catch (error) {
+              console.error('Error taking photo:', error);
+              Alert.alert('Error', 'No se pudo tomar la foto');
+            }
+          }
+        },
+        {
+          text: 'Galería',
+          onPress: async () => {
+            try {
+              const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+              
+              if (permissionResult.granted === false) {
+                Alert.alert('Permiso Requerido', 'Necesitas dar permiso para acceder a las fotos');
+                return;
+              }
+
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images,
+                allowsEditing: true,
+                quality: 0.7,
+              });
+
+              if (!result.canceled && result.assets[0]) {
+                setNewPhotos(prev => ({
+                  ...prev,
+                  [photoType]: result.assets[0].uri
+                }));
+              }
+            } catch (error) {
+              console.error('Error picking image:', error);
+              Alert.alert('Error', 'No se pudo seleccionar la imagen');
+            }
+          }
+        },
+        {
+          text: 'Cancelar',
+          style: 'cancel'
+        }
+      ]
+    );
+  };
+
+  const handleSaveReport = async () => {
+    if (!editingReport || !token) return;
+
+    setIsSaving(true);
+    try {
+      const updateData: any = {
+        parameters_before: editFormData.parameters_before,
+        chemicals: editFormData.chemicals,
+        equipment_check: editFormData.equipment_check,
+        observations: editFormData.observations,
+        materials_delivered: editFormData.materials_delivered,
+        dureza_aplica: editFormData.dureza_aplica,
+        estabilizador_aplica: editFormData.estabilizador_aplica,
+        sal_aplica: editFormData.sal_aplica,
+      };
+
+      // Si hay fotos nuevas, subirlas primero
+      if (Object.keys(newPhotos).length > 0) {
+        console.log('📤 Subiendo fotos nuevas:', Object.keys(newPhotos));
+        
+        for (const [photoKey, photoUri] of Object.entries(newPhotos)) {
+          if (photoUri && photoUri.startsWith('file://')) {
+            try {
+              console.log(`📸 Subiendo ${photoKey}...`);
+              const uploadResult = await ApiService.uploadImage(photoUri, token, editingReport.id.toString());
+              updateData[photoKey] = uploadResult.url;
+              console.log(`✅ ${photoKey} subido: ${uploadResult.url}`);
+            } catch (uploadError) {
+              console.error(`Error subiendo ${photoKey}:`, uploadError);
+              throw new Error(`No se pudo subir la foto ${photoKey}`);
+            }
+          } else {
+            // Si no es un archivo local, mantener la URL
+            updateData[photoKey] = photoUri;
+          }
+        }
+      }
+
+      console.log('💾 Guardando reporte con datos:', updateData);
+      await ApiService.updateReport(token, editingReport.id.toString(), updateData);
+      
+      Alert.alert('Éxito', 'Reporte actualizado correctamente');
+      closeEditModal();
+      handleRefresh();
+    } catch (error: any) {
+      console.error('Error updating report:', error);
+      Alert.alert('Error', error.message || 'No se pudo actualizar el reporte');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const openOrderDetail = (order: Order) => {
@@ -770,49 +924,82 @@ export default function ReportHistoryScreen() {
                 <Text style={styles.location}>{report.location}</Text>
               </View>
 
-              <View style={styles.reportFooter}>
-                <View style={styles.photosIndicator}>
-                  <Ionicons 
-                    name="flask" 
-                    size={16} 
-                    color={isValidImageUrl(report.photo_cloro_ph) ? '#4CAF50' : '#ccc'} 
-                  />
-                  <Text style={styles.photoText}>Cl/pH</Text>
-                  <Ionicons 
-                    name="beaker" 
-                    size={16} 
-                    color={isValidImageUrl(report.photo_alcalinidad) ? '#4CAF50' : '#ccc'} 
-                    style={styles.photoIcon}
-                  />
-                  <Text style={styles.photoText}>Alc</Text>
+              {/* Indicadores de parámetros con iconos específicos */}
+              <View style={styles.parametersRow}>
+                <View style={styles.parameterItem}>
                   <Ionicons 
                     name="water" 
-                    size={16} 
-                    color={isValidImageUrl(report.photo_dureza) ? '#4CAF50' : '#ccc'} 
-                    style={styles.photoIcon}
+                    size={22} 
+                    color={isValidImageUrl(report.photo_cloro_ph) ? '#00BCD4' : '#E0E0E0'} 
                   />
-                  <Text style={styles.photoText}>Dur</Text>
+                  <Text style={[styles.parameterText, { color: isValidImageUrl(report.photo_cloro_ph) ? '#00BCD4' : '#999' }]}>
+                    Cl/pH
+                  </Text>
+                </View>
+                <View style={styles.parameterItem}>
                   <Ionicons 
-                    name="shield-checkmark" 
-                    size={16} 
-                    color={isValidImageUrl(report.photo_estabilizador) ? '#4CAF50' : '#ccc'} 
-                    style={styles.photoIcon}
+                    name="flask" 
+                    size={22} 
+                    color={isValidImageUrl(report.photo_alcalinidad) ? '#9C27B0' : '#E0E0E0'} 
                   />
-                  <Text style={styles.photoText}>Est</Text>
+                  <Text style={[styles.parameterText, { color: isValidImageUrl(report.photo_alcalinidad) ? '#9C27B0' : '#999' }]}>
+                    Alc
+                  </Text>
                 </View>
-                <View style={styles.actionButtons}>
-                  <TouchableOpacity
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      openReportPreview(report);
-                    }}
-                    style={styles.previewButton}
-                  >
-                    <Ionicons name="eye-outline" size={16} color="#FFFFFF" />
-                    <Text style={styles.previewButtonText}>Vista Previa</Text>
-                  </TouchableOpacity>
-                  <Ionicons name="chevron-forward" size={20} color="#666" />
+                <View style={styles.parameterItem}>
+                  <Ionicons 
+                    name="diamond" 
+                    size={22} 
+                    color={(report.dureza_aplica && isValidImageUrl(report.photo_dureza)) ? '#FF9800' : '#E0E0E0'} 
+                  />
+                  <Text style={[styles.parameterText, { color: (report.dureza_aplica && isValidImageUrl(report.photo_dureza)) ? '#FF9800' : '#999' }]}>
+                    Dur
+                  </Text>
                 </View>
+                <View style={styles.parameterItem}>
+                  <Ionicons 
+                    name="shield" 
+                    size={22} 
+                    color={(report.estabilizador_aplica && isValidImageUrl(report.photo_estabilizador)) ? '#4CAF50' : '#E0E0E0'} 
+                  />
+                  <Text style={[styles.parameterText, { color: (report.estabilizador_aplica && isValidImageUrl(report.photo_estabilizador)) ? '#4CAF50' : '#999' }]}>
+                    Est
+                  </Text>
+                </View>
+                <View style={styles.parameterItem}>
+                  <Ionicons 
+                    name="snow" 
+                    size={22} 
+                    color={report.sal_aplica ? '#03A9F4' : '#E0E0E0'} 
+                  />
+                  <Text style={[styles.parameterText, { color: report.sal_aplica ? '#03A9F4' : '#999' }]}>
+                    Sal
+                  </Text>
+                </View>
+              </View>
+              
+              {/* Botones de acción */}
+              <View style={styles.reportFooter}>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    openEditModal(report);
+                  }}
+                  style={styles.editButton}
+                >
+                  <Ionicons name="create-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.editButtonText}>Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    openReportPreview(report);
+                  }}
+                  style={styles.previewButton}
+                >
+                  <Ionicons name="eye-outline" size={18} color="#FFFFFF" />
+                  <Text style={styles.previewButtonText}>Vista Previa</Text>
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           ))
@@ -1154,9 +1341,461 @@ export default function ReportHistoryScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal de Edición de Reporte */}
+      <Modal
+        animationType="slide"
+        transparent={false}
+        visible={editModalVisible}
+        onRequestClose={closeEditModal}
+      >
+        {editingReport && (
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={closeEditModal} style={styles.closeButton}>
+                <Ionicons name="close" size={24} color="white" />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Editar Reporte #{editingReport.report_number}</Text>
+              <TouchableOpacity 
+                onPress={handleSaveReport} 
+                style={styles.saveButton}
+                disabled={isSaving}
+              >
+                {isSaving ? (
+                  <Text style={styles.saveButtonText}>...</Text>
+                ) : (
+                  <Ionicons name="checkmark" size={28} color="white" />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent} contentContainerStyle={{paddingBottom: 40}}>
+              {/* Información básica */}
+              <View style={styles.editSection}>
+                <Text style={styles.editSectionTitle}>ℹ️ Información del Reporte</Text>
+                <View style={styles.reportInfoCard}>
+                  {editingReport.project_name && (
+                    <View style={styles.infoRow}>
+                      <View style={styles.infoIconContainer}>
+                        <Ionicons name="home" size={20} color="#0066CC" />
+                      </View>
+                      <View style={styles.infoTextContainer}>
+                        <Text style={styles.infoFieldLabel}>Proyecto</Text>
+                        <Text style={styles.infoFieldValue}>{editingReport.project_name}</Text>
+                      </View>
+                    </View>
+                  )}
+                  
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIconContainer}>
+                      <Ionicons name="person" size={20} color="#4CAF50" />
+                    </View>
+                    <View style={styles.infoTextContainer}>
+                      <Text style={styles.infoFieldLabel}>Cliente</Text>
+                      <Text style={styles.infoFieldValue}>{editingReport.client_name}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIconContainer}>
+                      <Ionicons name="location" size={20} color="#FF9800" />
+                    </View>
+                    <View style={styles.infoTextContainer}>
+                      <Text style={styles.infoFieldLabel}>Ubicación</Text>
+                      <Text style={styles.infoFieldValue}>{editingReport.location}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIconContainer}>
+                      <Ionicons name="construct" size={20} color="#9C27B0" />
+                    </View>
+                    <View style={styles.infoTextContainer}>
+                      <Text style={styles.infoFieldLabel}>Técnico</Text>
+                      <Text style={styles.infoFieldValue}>{editingReport.technician}</Text>
+                    </View>
+                  </View>
+                  
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIconContainer}>
+                      <Ionicons name="calendar" size={20} color="#F44336" />
+                    </View>
+                    <View style={styles.infoTextContainer}>
+                      <Text style={styles.infoFieldLabel}>Fecha de Servicio</Text>
+                      <Text style={styles.infoFieldValue}>{formatDate(editingReport.created_at)}</Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Configuración de pruebas */}
+              <View style={styles.editSection}>
+                <Text style={styles.editSectionTitle}>⚙️ Configuración de Pruebas</Text>
+                
+                <View style={styles.testConfigItem}>
+                  <Text style={styles.testConfigLabel}>¿Aplica prueba de Dureza?</Text>
+                  <TouchableOpacity
+                    style={[styles.switchButton, editFormData.dureza_aplica && styles.switchButtonActive]}
+                    onPress={() => {
+                      setEditFormData({
+                        ...editFormData,
+                        dureza_aplica: !editFormData.dureza_aplica
+                      });
+                    }}
+                  >
+                    <Text style={[styles.switchButtonText, editFormData.dureza_aplica && styles.switchButtonTextActive]}>
+                      {editFormData.dureza_aplica ? 'SÍ' : 'NO'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.testConfigItem}>
+                  <Text style={styles.testConfigLabel}>¿Aplica prueba de Estabilizador?</Text>
+                  <TouchableOpacity
+                    style={[styles.switchButton, editFormData.estabilizador_aplica && styles.switchButtonActive]}
+                    onPress={() => {
+                      setEditFormData({
+                        ...editFormData,
+                        estabilizador_aplica: !editFormData.estabilizador_aplica
+                      });
+                    }}
+                  >
+                    <Text style={[styles.switchButtonText, editFormData.estabilizador_aplica && styles.switchButtonTextActive]}>
+                      {editFormData.estabilizador_aplica ? 'SÍ' : 'NO'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.testConfigItem}>
+                  <Text style={styles.testConfigLabel}>¿Aplica Sal?</Text>
+                  <TouchableOpacity
+                    style={[styles.switchButton, editFormData.sal_aplica && styles.switchButtonActive]}
+                    onPress={() => {
+                      setEditFormData({
+                        ...editFormData,
+                        sal_aplica: !editFormData.sal_aplica
+                      });
+                    }}
+                  >
+                    <Text style={[styles.switchButtonText, editFormData.sal_aplica && styles.switchButtonTextActive]}>
+                      {editFormData.sal_aplica ? 'SÍ' : 'NO'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Observaciones y Materiales */}
+              <View style={styles.editSection}>
+                <Text style={styles.editSectionTitle}>📝 Notas</Text>
+                
+                <Text style={styles.inputLabel}>Observaciones:</Text>
+                <TextInput
+                  style={styles.textInput}
+                  multiline
+                  numberOfLines={4}
+                  value={editFormData.observations}
+                  onChangeText={(text) => setEditFormData({...editFormData, observations: text})}
+                  placeholder="Ingrese observaciones..."
+                  placeholderTextColor="#999"
+                />
+
+                <Text style={[styles.inputLabel, {marginTop: 16}]}>Materiales Entregados:</Text>
+                <TextInput
+                  style={styles.textInput}
+                  multiline
+                  numberOfLines={4}
+                  value={editFormData.materials_delivered}
+                  onChangeText={(text) => setEditFormData({...editFormData, materials_delivered: text})}
+                  placeholder="Ingrese materiales..."
+                  placeholderTextColor="#999"
+                />
+              </View>
+
+              {/* Parámetros */}
+              <View style={styles.editSection}>
+                <Text style={styles.editSectionTitle}>💧 Parámetros del Agua</Text>
+                {editFormData.parameters_before && Object.entries(editFormData.parameters_before).map(([key, value]) => {
+                  // Condicionar parámetros según si aplican
+                  if (key === 'hardness' && !editFormData.dureza_aplica) return null;
+                  if (key === 'stabilizer' && !editFormData.estabilizador_aplica) return null;
+                  if (key === 'salt' && !editFormData.sal_aplica) return null;
+                  
+                  return (
+                    <View key={key} style={styles.parameterEditRow}>
+                      <Text style={styles.parameterLabelEdit}>{getParameterLabel(key)}:</Text>
+                      <TextInput
+                        style={styles.parameterInput}
+                        keyboardType="decimal-pad"
+                        value={value?.toString()}
+                        onChangeText={(text) => {
+                          const numValue = parseFloat(text) || 0;
+                          setEditFormData({
+                            ...editFormData,
+                            parameters_before: {
+                              ...editFormData.parameters_before,
+                              [key]: numValue
+                            }
+                          });
+                        }}
+                      />
+                    </View>
+                  );
+                })}
+              </View>
+
+              {/* Químicos */}
+              <View style={styles.editSection}>
+                <Text style={styles.editSectionTitle}>🧪 Químicos Utilizados</Text>
+                {editFormData.chemicals && Object.entries(editFormData.chemicals).map(([key, value]) => (
+                  <View key={key} style={styles.parameterEditRow}>
+                    <Text style={styles.parameterLabelEdit}>{getChemicalLabel(key)}:</Text>
+                    <View style={{flexDirection: 'row', alignItems: 'center'}}>
+                      <TextInput
+                        style={[styles.parameterInput, {width: 80}]}
+                        keyboardType="decimal-pad"
+                        value={value?.toString()}
+                        onChangeText={(text) => {
+                          const numValue = parseFloat(text) || 0;
+                          setEditFormData({
+                            ...editFormData,
+                            chemicals: {
+                              ...editFormData.chemicals,
+                              [key]: numValue
+                            }
+                          });
+                        }}
+                      />
+                      <Text style={styles.chemicalUnit}>{getChemicalUnit(key)}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              {/* Equipos */}
+              <View style={styles.editSection}>
+                <Text style={styles.editSectionTitle}>🔧 Estado de Equipos</Text>
+                {editFormData.equipment_check && Object.entries(editFormData.equipment_check).map(([key, value]) => {
+                  const equipmentData = typeof value === 'object' ? value : { aplica: !!value, working: !!value };
+                  return (
+                    <View key={key} style={styles.equipmentEditItem}>
+                      <Text style={styles.equipmentLabelEdit}>{getEquipmentLabel(key)}</Text>
+                      <View style={styles.equipmentToggles}>
+                        <TouchableOpacity
+                          style={[styles.toggleButton, equipmentData.aplica && styles.toggleButtonActive]}
+                          onPress={() => {
+                            const newValue = { aplica: !equipmentData.aplica, working: equipmentData.working };
+                            setEditFormData({
+                              ...editFormData,
+                              equipment_check: {
+                                ...editFormData.equipment_check,
+                                [key]: newValue
+                              }
+                            });
+                          }}
+                        >
+                          <Text style={[styles.toggleText, equipmentData.aplica && styles.toggleTextActive]}>
+                            {equipmentData.aplica ? '✓ Aplica' : 'No Aplica'}
+                          </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[
+                            styles.toggleButton,
+                            equipmentData.working && styles.toggleButtonWorking,
+                            !equipmentData.aplica && styles.toggleButtonDisabled
+                          ]}
+                          disabled={!equipmentData.aplica}
+                          onPress={() => {
+                            const newValue = { aplica: equipmentData.aplica, working: !equipmentData.working };
+                            setEditFormData({
+                              ...editFormData,
+                              equipment_check: {
+                                ...editFormData.equipment_check,
+                                [key]: newValue
+                              }
+                            });
+                          }}
+                        >
+                          <Text style={[
+                            styles.toggleText,
+                            equipmentData.working && styles.toggleTextActive,
+                            !equipmentData.aplica && styles.toggleTextDisabled
+                          ]}>
+                            {equipmentData.working ? '✓ Funciona' : 'No Funciona'}
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+
+              {/* Fotos */}
+              <View style={styles.editSection}>
+                <Text style={styles.editSectionTitle}>📸 Fotos</Text>
+                
+                {/* Cloro/pH */}
+                <View style={styles.photoEditItem}>
+                  <Text style={styles.photoEditLabel}>Cloro/pH:</Text>
+                  <View style={styles.photoEditActions}>
+                    {(newPhotos.photo_cloro_ph || editingReport.photo_cloro_ph) && (
+                      <Image 
+                        source={{uri: newPhotos.photo_cloro_ph || getImageUrl(editingReport.photo_cloro_ph)}} 
+                        style={styles.photoPreviewSmall}
+                      />
+                    )}
+                    <TouchableOpacity
+                      style={styles.photoButton}
+                      onPress={() => handlePickImage('photo_cloro_ph')}
+                    >
+                      <Ionicons name="camera" size={20} color="white" />
+                      <Text style={styles.photoButtonText}>
+                        {newPhotos.photo_cloro_ph || editingReport.photo_cloro_ph ? 'Cambiar' : 'Agregar'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Alcalinidad */}
+                <View style={styles.photoEditItem}>
+                  <Text style={styles.photoEditLabel}>Alcalinidad:</Text>
+                  <View style={styles.photoEditActions}>
+                    {(newPhotos.photo_alcalinidad || editingReport.photo_alcalinidad) && (
+                      <Image 
+                        source={{uri: newPhotos.photo_alcalinidad || getImageUrl(editingReport.photo_alcalinidad)}} 
+                        style={styles.photoPreviewSmall}
+                      />
+                    )}
+                    <TouchableOpacity
+                      style={styles.photoButton}
+                      onPress={() => handlePickImage('photo_alcalinidad')}
+                    >
+                      <Ionicons name="camera" size={20} color="white" />
+                      <Text style={styles.photoButtonText}>
+                        {newPhotos.photo_alcalinidad || editingReport.photo_alcalinidad ? 'Cambiar' : 'Agregar'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Dureza */}
+                {editFormData.dureza_aplica && (
+                  <View style={styles.photoEditItem}>
+                    <Text style={styles.photoEditLabel}>Dureza:</Text>
+                    <View style={styles.photoEditActions}>
+                      {(newPhotos.photo_dureza || editingReport.photo_dureza) && (
+                        <Image 
+                          source={{uri: newPhotos.photo_dureza || getImageUrl(editingReport.photo_dureza)}} 
+                          style={styles.photoPreviewSmall}
+                        />
+                      )}
+                      <TouchableOpacity
+                        style={styles.photoButton}
+                        onPress={() => handlePickImage('photo_dureza')}
+                      >
+                        <Ionicons name="camera" size={20} color="white" />
+                        <Text style={styles.photoButtonText}>
+                          {newPhotos.photo_dureza || editingReport.photo_dureza ? 'Cambiar' : 'Agregar'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+
+                {/* Estabilizador */}
+                {editFormData.estabilizador_aplica && (
+                  <View style={styles.photoEditItem}>
+                    <Text style={styles.photoEditLabel}>Estabilizador:</Text>
+                    <View style={styles.photoEditActions}>
+                      {(newPhotos.photo_estabilizador || editingReport.photo_estabilizador) && (
+                        <Image 
+                          source={{uri: newPhotos.photo_estabilizador || getImageUrl(editingReport.photo_estabilizador)}} 
+                          style={styles.photoPreviewSmall}
+                        />
+                      )}
+                      <TouchableOpacity
+                        style={styles.photoButton}
+                        onPress={() => handlePickImage('photo_estabilizador')}
+                      >
+                        <Ionicons name="camera" size={20} color="white" />
+                        <Text style={styles.photoButtonText}>
+                          {newPhotos.photo_estabilizador || editingReport.photo_estabilizador ? 'Cambiar' : 'Agregar'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+      </Modal>
     </View>
   );
 }
+
+// Funciones helper para labels
+const getParameterLabel = (key: string): string => {
+  const labels: Record<string, string> = {
+    cl: 'Cloro (Cl)',
+    ph: 'pH',
+    alk: 'Alcalinidad',
+    salt: 'Sal',
+    hardness: 'Dureza',
+    stabilizer: 'Estabilizador',
+    temperature: 'Temperatura'
+  };
+  return labels[key] || key;
+};
+
+const getChemicalLabel = (key: string): string => {
+  const labels: Record<string, string> = {
+    tricloro: 'Tricloro',
+    tabletas: 'Tabletas',
+    acido: 'Ácido',
+    soda: 'Soda Cáustica',
+    bicarbonato: 'Bicarbonato',
+    sal: 'Sal',
+    alguicida: 'Alguicida',
+    clarificador: 'Clarificador',
+    cloro_liquido: 'Cloro Líquido'
+  };
+  return labels[key] || key;
+};
+
+const getChemicalUnit = (key: string): string => {
+  const units: Record<string, string> = {
+    tricloro: 'lb',
+    tabletas: 'lb',
+    acido: 'L',
+    soda: 'L',
+    bicarbonato: 'lb',
+    sal: 'lb',
+    alguicida: 'L',
+    clarificador: 'L',
+    cloro_liquido: 'L'
+  };
+  return units[key] || '';
+};
+
+const getEquipmentLabel = (key: string): string => {
+  const labels: Record<string, string> = {
+    bomba_filtro: 'Bomba de Filtro',
+    filtro_piscina: 'Filtro de Piscina',
+    clorinador_piscina: 'Clorinador de Piscina',
+    luces_piscina: 'Luces de Piscina',
+    bomba_reposadero: 'Bomba de Reposadero',
+    filtro_espejo: 'Filtro de Espejo',
+    bomba_espejo: 'Bomba de Espejo',
+    luces_espejo: 'Luces de Espejo',
+    clorinador_espejo: 'Clorinador de Espejo',
+    bomba_jets: 'Bomba de Jets (Spa)',
+    filtro_spa: 'Filtro de Spa',
+    clorinador_spa: 'Clorinador de Spa',
+    luces_spa: 'Luces de Spa',
+    blower: 'Blower (Spa)'
+  };
+  return labels[key] || key;
+};
 
 const styles = StyleSheet.create({
   container: {
@@ -1362,11 +2001,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#eee',
-    flexWrap: 'wrap',
-    gap: 8,
+    gap: 10,
   },
   actionButtons: {
     flexDirection: 'row',
@@ -1380,24 +2015,47 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     flex: 1,
   },
-  previewButton: {
+  editButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#1976D2',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 8,
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FF9800',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
+  },
+  editButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  previewButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1976D2',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 3,
+    elevation: 3,
   },
   previewButtonText: {
     color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
   },
   photoText: {
     fontSize: 12,
@@ -1653,5 +2311,353 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     color: Colors.primary.blue,
+  },
+  saveButton: {
+    padding: 8,
+  },
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  editSection: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 15,
+    marginTop: 15,
+    borderRadius: 12,
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  editSectionTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1a1a1a',
+    marginBottom: 15,
+  },
+  editInfoText: {
+    fontSize: 15,
+    color: '#333',
+    marginBottom: 8,
+    lineHeight: 22,
+  },
+  editInfoLabel: {
+    fontWeight: '600',
+    color: '#1976D2',
+  },
+  textAreaContainer: {
+    marginBottom: 15,
+  },
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  textAreaInput: {
+    backgroundColor: '#f5f5f5',
+    borderRadius: 8,
+    padding: 12,
+    maxHeight: 100,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  textAreaText: {
+    fontSize: 15,
+    color: '#333',
+    lineHeight: 22,
+  },
+  parameterItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  parameterLabel: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+  },
+  parameterValueContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  parameterValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1976D2',
+  },
+  equipmentEditItem: {
+    marginBottom: 15,
+    paddingBottom: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  equipmentLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
+  equipmentToggles: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  toggleButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    backgroundColor: '#f5f5f5',
+    borderWidth: 2,
+    borderColor: '#e0e0e0',
+    alignItems: 'center',
+  },
+  toggleButtonActive: {
+    backgroundColor: '#E3F2FD',
+    borderColor: '#1976D2',
+  },
+  toggleButtonWorking: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#4CAF50',
+  },
+  toggleButtonDisabled: {
+    opacity: 0.4,
+  },
+  toggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  toggleTextActive: {
+    color: '#1976D2',
+  },
+  toggleTextDisabled: {
+    color: '#999',
+  },
+  editNote: {
+    fontSize: 13,
+    color: '#666',
+    fontStyle: 'italic',
+    marginBottom: 15,
+    lineHeight: 18,
+  },
+  photosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  photoThumb: {
+    backgroundColor: '#E3F2FD',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    gap: 5,
+  },
+  photoThumbText: {
+    fontSize: 11,
+    color: Colors.primary.blue,
+    fontWeight: '600',
+  },
+  // Nuevos estilos para UI mejorada
+  parametersRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  parameterItem: {
+    alignItems: 'center',
+    gap: 6,
+  },
+  parameterText: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  infoCard: {
+    backgroundColor: '#f8f8f8',
+    padding: 16,
+    borderRadius: 8,
+  },
+  reportInfoCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 4,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  infoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F5',
+  },
+  infoIconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F8F8F8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  infoTextContainer: {
+    flex: 1,
+  },
+  infoFieldLabel: {
+    fontSize: 12,
+    color: '#666',
+    fontWeight: '500',
+    marginBottom: 2,
+  },
+  infoFieldValue: {
+    fontSize: 15,
+    color: '#1a1a1a',
+    fontWeight: '600',
+  },
+  textInput: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 15,
+    color: '#1a1a1a',
+    textAlignVertical: 'top',
+    minHeight: 100,
+  },
+  parameterEditRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f0f0f0',
+  },
+  parameterLabelEdit: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
+  },
+  parameterInput: {
+    backgroundColor: 'white',
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 16,
+    color: '#1a1a1a',
+    minWidth: 100,
+    textAlign: 'right',
+  },
+  chemicalUnit: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#666',
+    fontWeight: '500',
+  },
+  equipmentLabelEdit: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
+  },
+  photoEditItem: {
+    marginBottom: 20,
+  },
+  photoEditLabel: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 10,
+  },
+  photoEditActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  photoPreviewSmall: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#f0f0f0',
+  },
+  photoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary.blue,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    gap: 8,
+  },
+  photoButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  testConfigItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E8E8E8',
+  },
+  testConfigLabel: {
+    fontSize: 15,
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
+  },
+  switchButton: {
+    backgroundColor: '#E0E0E0',
+    paddingVertical: 8,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    minWidth: 60,
+    alignItems: 'center',
+  },
+  switchButtonActive: {
+    backgroundColor: '#4CAF50',
+  },
+  switchButtonText: {
+    color: '#666',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  switchButtonTextActive: {
+    color: 'white',
   },
 });
