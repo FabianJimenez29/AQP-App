@@ -82,6 +82,12 @@ export default function UnifiedNewReportScreen() {
     cl: 0, ph: 0, alk: 0, stabilizer: 0, hardness: 0, salt: 0, temperature: 0
   });
 
+  // Strings para permitir decimales mientras se escribe
+  const [chemicalsStr, setChemicalsStr] = useState<Record<string, string>>({
+    tricloro: '', tabletas: '', acido: '', soda: '', bicarbonato: '',
+    sal: '', alguicida: '', clarificador: '', cloro_liquido: ''
+  });
+
   const [chemicals, setChemicals] = useState<Chemicals>({
     tricloro: 0, tabletas: 0, acido: 0, soda: 0, bicarbonato: 0,
     sal: 0, alguicida: 0, clarificador: 0, cloro_liquido: 0
@@ -218,8 +224,15 @@ export default function UnifiedNewReportScreen() {
   };
 
   const handleChemicalChange = (key: keyof Chemicals, value: string) => {
-    const numValue = parseFloat(value) || 0;
-    setChemicals(prev => ({ ...prev, [key]: numValue }));
+    // Permitir números decimales con punto o coma
+    if (value === '' || value === '.' || value === ',' || /^\d*[.,]?\d*$/.test(value)) {
+      // Guardar el string original (con coma o punto) para mostrar en el input
+      setChemicalsStr(prev => ({ ...prev, [key]: value }));
+      // Convertir coma a punto para el número
+      const normalizedValue = value.replace(',', '.');
+      const numValue = normalizedValue === '' || normalizedValue === '.' ? 0 : parseFloat(normalizedValue);
+      setChemicals(prev => ({ ...prev, [key]: numValue }));
+    }
   };
 
   const handleEquipmentToggle = (key: keyof EquipmentCheck, field: 'aplica' | 'working') => {
@@ -429,6 +442,7 @@ export default function UnifiedNewReportScreen() {
                 observations: observations,
                 projectName: selectedProject.project_name,
                 reportNumber: savedReport?.report?.report_number || savedReport?.report_number || 'N/A',
+                created_date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
               };
               
               console.log('📸 Fotos locales para preview:', {
@@ -610,11 +624,7 @@ export default function UnifiedNewReportScreen() {
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.stepIndicators}>
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.stepIndicatorsContainer}
-          >
+          <View style={styles.stepIndicatorsContainer}>
             {[
               { num: 1, icon: 'home', label: 'Proyecto' },
               { num: 2, icon: 'flask-outline', label: 'Cl/pH' },
@@ -666,7 +676,7 @@ export default function UnifiedNewReportScreen() {
                 </Text>
               </TouchableOpacity>
             ))}
-          </ScrollView>
+          </View>
         </View>
 
         <View style={styles.content}>
@@ -1239,7 +1249,9 @@ export default function UnifiedNewReportScreen() {
                     </View>
                     <TextInput
                       style={styles.chemicalInput}
-                      value={(chemicals[chemical.key as keyof Chemicals] || 0).toString()}
+                      value={chemicalsStr[chemical.key] !== undefined && chemicalsStr[chemical.key] !== '' 
+                        ? chemicalsStr[chemical.key] 
+                        : (chemicals[chemical.key as keyof Chemicals] > 0 ? chemicals[chemical.key as keyof Chemicals].toString() : '')}
                       onChangeText={(value) => handleChemicalChange(chemical.key as keyof Chemicals, value)}
                       keyboardType="decimal-pad"
                       placeholder="0"
@@ -1594,19 +1606,21 @@ const styles = StyleSheet.create({
   // Step Indicators
   stepIndicators: {
     paddingVertical: 16,
-    paddingHorizontal: 8,
+    paddingHorizontal: 16,
     backgroundColor: 'white',
     borderBottomWidth: 1,
     borderBottomColor: '#f0f0f0',
   },
   stepIndicatorsContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'space-around',
     alignItems: 'center',
+    flex: 1,
   },
   stepIndicator: {
     alignItems: 'center',
-    flex: 1,
+    justifyContent: 'center',
+    width: 38,
     opacity: 0.5,
   },
   stepIndicatorActive: {
