@@ -195,11 +195,33 @@ export default function ReportHistoryScreen() {
     
     console.log('🕐 entryTimestamp:', entryTimestamp);
     console.log('🕐 exitTimestamp:', exitTimestamp);
+    console.log('🏊 Pool data from report:', {
+      pool_name: report.pool_name,
+      pool_type: report.pool_type,
+      pool_gallons: report.pool_gallons,
+      project_pool_id: report.project_pool_id,
+      project_id: report.project_id,
+      report_number: report.report_number,
+      created_date: report.created_date
+    });
+    
+    // Si el reporte no tiene pool_name pero tiene project_pool_id, es un error de datos
+    if (report.project_pool_id && !report.pool_name) {
+      console.warn('⚠️ Reporte tiene project_pool_id pero no pool_name. Revisar JOIN en backend.');
+    }
+    
+    // Si el reporte es antiguo (no tiene project_pool_id), es normal que no tenga datos de pool
+    if (!report.project_pool_id) {
+      console.info('ℹ️ Reporte antiguo sin project_pool_id. No mostrará información de piscina/spa.');
+    }
     
     // Convertir el formato del reporte del historial al formato esperado por ReportPreviewScreen
     const reportDataForPreview = {
       clientName: report.project_name || report.client_name,
       location: report.location,
+      poolName: report.pool_name || null,
+      poolType: report.pool_type || null,
+      poolGallons: report.pool_gallons || null,
       technician: report.technician,
       userId: user?.id || 0,
       entryTime: entryTimestamp,

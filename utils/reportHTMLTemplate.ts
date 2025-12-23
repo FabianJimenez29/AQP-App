@@ -646,10 +646,6 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
           <div class="info-value">${report.clientName || report.projectName || 'N/A'}</div>
         </div>
         <div class="info-card">
-          <div class="info-label">Ubicación</div>
-          <div class="info-value">${report.location || 'N/A'}</div>
-        </div>
-        <div class="info-card">
           <div class="info-label">Técnico Responsable</div>
           <div class="info-value">${report.technician || 'N/A'}</div>
         </div>
@@ -657,6 +653,12 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
           <div class="info-label">Fecha del Servicio</div>
           <div class="info-value">${serviceDate}</div>
         </div>
+        ${(report.poolName || report.pool_name) ? `
+        <div class="info-card">
+          <div class="info-label">${(report.poolType || report.pool_type) === 'spa' ? '♨️ Spa' : '🏊 Piscina'}</div>
+          <div class="info-value">${report.poolName || report.pool_name}${(report.poolGallons || report.pool_gallons) ? ` (${report.poolGallons || report.pool_gallons} gal)` : ''}</div>
+        </div>
+        ` : ''}
         <div class="info-card">
           <div class="info-label">Hora de Entrada</div>
           <div class="info-value">${entryTime}</div>

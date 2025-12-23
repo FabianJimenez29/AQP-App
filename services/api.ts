@@ -450,6 +450,18 @@ class ApiService {
       },
     });
   }
+
+  // Project Pools Methods
+  async getProjectPools(projectId: string, token: string): Promise<any[]> {
+    const response = await this.request(`/project-pools/${projectId}`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    // Extraer el array de data si viene envuelto
+    return response.data || response;
+  }
 }
 
 export default new ApiService();

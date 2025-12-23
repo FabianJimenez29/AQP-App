@@ -12,6 +12,7 @@ import {
   Modal,
   Platform,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
@@ -55,6 +56,15 @@ export default function UnifiedNewReportScreen() {
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [isLoadingProjects, setIsLoadingProjects] = useState(true);
   const [showProjectPicker, setShowProjectPicker] = useState(false);
+
+  // Project Pools state
+  const [projectPools, setProjectPools] = useState<any[]>([]);
+  const [selectedPool, setSelectedPool] = useState<any>(null);
+  const [isLoadingPools, setIsLoadingPools] = useState(false);
+  const [showPoolPicker, setShowPoolPicker] = useState(false);
+
+  // Chemical Recommendations state
+  const [showRecommendationsModal, setShowRecommendationsModal] = useState(false);
 
   const [clientName, setClientName] = useState('');
   const [location, setLocation] = useState('');
@@ -132,6 +142,37 @@ export default function UnifiedNewReportScreen() {
     };
     loadProjects();
   }, [token]);
+
+  // Cargar piscinas/spas cuando se selecciona un proyecto
+  const loadProjectPools = async (projectId: string) => {
+    if (!token) return;
+    
+    setIsLoadingPools(true);
+    try {
+      const poolsData = await ApiService.getProjectPools(projectId, token);
+      console.log('🏊 Pools loaded for project:', projectId, poolsData);
+      setProjectPools(poolsData);
+      
+      // Si solo hay una piscina/spa, seleccionarla automáticamente
+      if (poolsData.length === 1) {
+        setSelectedPool(poolsData[0]);
+        console.log('🏊 Auto-selected pool:', poolsData[0]);
+      } else if (poolsData.length === 0) {
+        setSelectedPool(null);
+        // Si no hay piscinas configuradas, mostrar alerta
+        Alert.alert(
+          'Sin piscinas/spas',
+          'Este proyecto no tiene piscinas o spas configurados. Contacta al administrador.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Error loading project pools:', error);
+      showError('No se pudieron cargar las piscinas del proyecto');
+    } finally {
+      setIsLoadingPools(false);
+    }
+  };
 
   const handleImagePicker = async (type: 'cloro_ph' | 'alcalinidad' | 'dureza' | 'estabilizador') => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -245,9 +286,210 @@ export default function UnifiedNewReportScreen() {
     }));
   };
 
+  // Función para calcular recomendaciones de químicos
+  const calculateRecommendations = () => {
+    const IDEAL_VALUES = {
+      freeChlorine: 2.0,
+      ph: 7.4,
+      alkalinity: 100,
+      cyanuricAcid: 40,
+      calciumHardness: 300,
+      salt: 3200,
+    };
+
+    const ACCEPTABLE_RANGES = {
+      freeChlorine: { min: 1.0, max: 3.0 },
+      ph: { min: 7.2, max: 7.6 },
+      alkalinity: { min: 80, max: 120 },
+      cyanuricAcid: { min: 30, max: 50 },
+      calciumHardness: { min: 200, max: 400 },
+      salt: { min: 2700, max: 3400 },
+    };
+
+    const recommendations: any[] = [];
+    const poolGallons = selectedPool?.gallons || 10000;
+
+    // Cloro libre - Cloro Granulado
+    if (parametersBefore.cl < ACCEPTABLE_RANGES.freeChlorine.min) {
+      const deficit = IDEAL_VALUES.freeChlorine - parametersBefore.cl;
+      // 1 oz de cloro granulado aumenta 1 ppm en 10,000 galones
+      const ozNeeded = deficit * (poolGallons / 10000);
+      const gramsNeeded = ozNeeded * 28.35;
+      recommendations.push({
+        chemical: 'Cloro Granulado',
+        amount: gramsNeeded,
+        unit: 'g',
+        reason: 'Cloro libre está bajo',
+        current: parametersBefore.cl,
+        ideal: IDEAL_VALUES.freeChlorine,
+      });
+    } else if (parametersBefore.cl > ACCEPTABLE_RANGES.freeChlorine.max) {
+      recommendations.push({
+        chemical: 'Esperar o Diluir',
+        amount: 0,
+        unit: '',
+        reason: 'Cloro libre está alto. Espere o diluya el agua',
+        current: parametersBefore.cl,
+        ideal: IDEAL_VALUES.freeChlorine,
+      });
+    }
+
+    // Tabletas para Clorinador - Mantenimiento semanal
+    const isSpa = selectedPool?.type === 'spa';
+    if (!isSpa) {
+      // Para piscinas: 1 tableta de 3" por cada 5,000 galones por semana
+      const tabletsPerWeek = Math.ceil(poolGallons / 5000);
+      recommendations.push({
+        chemical: 'Tabletas de Cloro (Clorinador)',
+        amount: tabletsPerWeek,
+        unit: tabletsPerWeek === 1 ? 'tableta/semana' : 'tabletas/semana',
+        reason: 'Mantenimiento continuo del cloro',
+        current: parametersBefore.cl,
+        ideal: IDEAL_VALUES.freeChlorine,
+        isMaintenance: true,
+      });
+    }
+
+    // pH - Soda Ash (subir) o Ácido Muriático (bajar)
+    if (parametersBefore.ph < ACCEPTABLE_RANGES.ph.min) {
+      const deficit = IDEAL_VALUES.ph - parametersBefore.ph;
+      // 6 oz de soda ash aumenta pH en 0.2 por cada 10,000 galones
+      const ozNeeded = (deficit / 0.2) * 6 * (poolGallons / 10000);
+      const kgNeeded = (ozNeeded * 28.35) / 1000;
+      recommendations.push({
+        chemical: 'Soda Ash',
+        amount: kgNeeded,
+        unit: 'kg',
+        reason: 'pH está bajo',
+        current: parametersBefore.ph,
+        ideal: IDEAL_VALUES.ph,
+      });
+    } else if (parametersBefore.ph > ACCEPTABLE_RANGES.ph.max) {
+      const excess = parametersBefore.ph - IDEAL_VALUES.ph;
+      // 1 cuarto de galón (0.25 gal) de ácido baja pH en 0.2 por cada 10,000 galones
+      const gallonsNeeded = (excess / 0.2) * 0.25 * (poolGallons / 10000);
+      recommendations.push({
+        chemical: 'Ácido Muriático',
+        amount: gallonsNeeded,
+        unit: 'gl',
+        reason: 'pH está alto',
+        current: parametersBefore.ph,
+        ideal: IDEAL_VALUES.ph,
+      });
+    }
+
+    // Alcalinidad - Bicarbonato (subir) o Ácido Muriático (bajar)
+    if (parametersBefore.alk < ACCEPTABLE_RANGES.alkalinity.min) {
+      const deficit = IDEAL_VALUES.alkalinity - parametersBefore.alk;
+      // 1.5 lb de bicarbonato aumenta alcalinidad en 10 ppm por cada 10,000 galones
+      const lbsNeeded = (deficit / 10) * 1.5 * (poolGallons / 10000);
+      const kgNeeded = lbsNeeded * 0.453592;
+      recommendations.push({
+        chemical: 'Bicarbonato de Sodio',
+        amount: kgNeeded,
+        unit: 'kg',
+        reason: 'Alcalinidad está baja',
+        current: parametersBefore.alk,
+        ideal: IDEAL_VALUES.alkalinity,
+      });
+    } else if (parametersBefore.alk > ACCEPTABLE_RANGES.alkalinity.max) {
+      const excess = parametersBefore.alk - IDEAL_VALUES.alkalinity;
+      // Ácido también baja alcalinidad
+      const gallonsNeeded = (excess / 10) * 0.2 * (poolGallons / 10000);
+      recommendations.push({
+        chemical: 'Ácido Muriático',
+        amount: gallonsNeeded,
+        unit: 'gl',
+        reason: 'Alcalinidad está alta',
+        current: parametersBefore.alk,
+        ideal: IDEAL_VALUES.alkalinity,
+      });
+    }
+
+    // Estabilizador - Ácido Cianúrico
+    if (estabilizadorAplica) {
+      if (parametersBefore.stabilizer < ACCEPTABLE_RANGES.cyanuricAcid.min) {
+        const deficit = IDEAL_VALUES.cyanuricAcid - parametersBefore.stabilizer;
+        // 1 lb de ácido cianúrico aumenta estabilizador en 10 ppm por cada 10,000 galones
+        const lbsNeeded = (deficit / 10) * 1 * (poolGallons / 10000);
+        const kgNeeded = lbsNeeded * 0.453592;
+        recommendations.push({
+          chemical: 'Ácido Cianúrico',
+          amount: kgNeeded,
+          unit: 'kg',
+          reason: 'Estabilizador está bajo',
+          current: parametersBefore.stabilizer,
+          ideal: IDEAL_VALUES.cyanuricAcid,
+        });
+      } else if (parametersBefore.stabilizer > ACCEPTABLE_RANGES.cyanuricAcid.max) {
+        const percentDilution = ((parametersBefore.stabilizer - IDEAL_VALUES.cyanuricAcid) / parametersBefore.stabilizer) * 100;
+        recommendations.push({
+          chemical: 'Diluir Agua',
+          amount: percentDilution,
+          unit: '% del agua',
+          reason: 'Estabilizador está alto. Requiere dilución',
+          current: parametersBefore.stabilizer,
+          ideal: IDEAL_VALUES.cyanuricAcid,
+        });
+      }
+    }
+
+    // Dureza - Hipoclorito de Calcio en polvo
+    if (durezaAplica) {
+      if (parametersBefore.hardness < ACCEPTABLE_RANGES.calciumHardness.min) {
+        const deficit = IDEAL_VALUES.calciumHardness - parametersBefore.hardness;
+        // 1 lb de hipoclorito de calcio aumenta dureza en 10 ppm por cada 10,000 galones
+        const lbsNeeded = (deficit / 10) * 1 * (poolGallons / 10000);
+        const kgNeeded = lbsNeeded * 0.453592;
+        recommendations.push({
+          chemical: 'Hipoclorito de Calcio (Polvo)',
+          amount: kgNeeded,
+          unit: 'kg',
+          reason: 'Dureza de calcio está baja',
+          current: parametersBefore.hardness,
+          ideal: IDEAL_VALUES.calciumHardness,
+        });
+      } else if (parametersBefore.hardness > ACCEPTABLE_RANGES.calciumHardness.max) {
+        recommendations.push({
+          chemical: 'Diluir o Secuestrante',
+          amount: 0,
+          unit: '',
+          reason: 'Dureza de calcio está alta. Considere diluir',
+          current: parametersBefore.hardness,
+          ideal: IDEAL_VALUES.calciumHardness,
+        });
+      }
+    }
+
+    // Sal - Bolsas de Sal
+    if (salAplica && parametersBefore.salt > 0) {
+      if (parametersBefore.salt < ACCEPTABLE_RANGES.salt.min) {
+        const deficit = IDEAL_VALUES.salt - parametersBefore.salt;
+        // 1 bolsa de 50 lb aumenta sal en aproximadamente 600 ppm por cada 10,000 galones
+        const bagsNeeded = (deficit / 600) * (poolGallons / 10000);
+        const roundedBags = Math.ceil(bagsNeeded); // Redondear hacia arriba a bolsas completas
+        recommendations.push({
+          chemical: 'Sal (Bolsas de 50 lb)',
+          amount: roundedBags,
+          unit: roundedBags === 1 ? 'bolsa' : 'bolsas',
+          reason: 'Nivel de sal está bajo',
+          current: parametersBefore.salt,
+          ideal: IDEAL_VALUES.salt,
+        });
+      }
+    }
+
+    return recommendations;
+  };
+
   const validateForm = () => {
     if (!selectedProject) {
       showError('❌ Debes seleccionar un proyecto\n\nPor favor selecciona un proyecto activo de la lista.');
+      return false;
+    }
+    // Validar selección de piscina/spa cuando hay múltiples opciones
+    if (projectPools.length > 1 && !selectedPool) {
+      showError('❌ Debes seleccionar una piscina o spa\n\nEste proyecto tiene múltiples piscinas/spas configurados.');
       return false;
     }
     if (!photoCloroPh) {
@@ -382,6 +624,10 @@ export default function UnifiedNewReportScreen() {
 
               const reportData = {
                 projectId: selectedProject.id,
+                projectPoolId: selectedPool?.id || null,
+                poolName: selectedPool?.name || null,
+                poolType: selectedPool?.type || null,
+                poolGallons: selectedPool?.gallons || null,
                 clientName: selectedProject.client_name,
                 location: selectedProject.location,
                 technician: user?.name || 'Técnico',
@@ -424,9 +670,14 @@ export default function UnifiedNewReportScreen() {
               dispatch(incrementTodayReports());
               
               // Preparar datos del reporte para la vista previa
+              console.log('🏊 Selected pool al crear preview:', selectedPool);
+              
               const reportDataForPreview = {
                 clientName: selectedProject.project_name,
                 location: selectedProject.location,
+                poolName: selectedPool?.name || null,
+                poolType: selectedPool?.type || null,
+                poolGallons: selectedPool?.gallons || null,
                 technician: user?.name || 'Técnico',
                 userId: user?.id || 0,
                 entryTime: entryTime || getCostaRicaTimestamp(),
@@ -731,37 +982,97 @@ export default function UnifiedNewReportScreen() {
                     </View>
 
                     {selectedProject && (
-                      <View style={styles.selectedProjectCard}>
-                        <Text style={styles.selectedProjectTitle}>
-                          <Ionicons name="information-circle" size={16} /> Información del Proyecto
-                        </Text>
-                        <View style={styles.selectedProjectInfo}>
-                          <Text style={styles.selectedProjectLabel}>Cliente:</Text>
-                          <Text style={styles.selectedProjectValue}>{selectedProject.client_name}</Text>
+                      <>
+                        {/* Selector de Piscina/Spa */}
+                        <View style={styles.inputGroup}>
+                          <Text style={styles.label}>
+                            <Ionicons name="water" size={16} color="#666" /> Piscina/Spa *
+                          </Text>
+                          {isLoadingPools ? (
+                            <View style={styles.loadingContainer}>
+                              <ActivityIndicator size="small" color="#0066CC" />
+                              <Text style={styles.loadingText}>Cargando...</Text>
+                            </View>
+                          ) : projectPools.length === 0 ? (
+                            <View style={styles.warningBox}>
+                              <Ionicons name="warning" size={20} color="#ff9800" />
+                              <Text style={styles.warningText}>
+                                Este proyecto no tiene piscinas/spas configurados
+                              </Text>
+                            </View>
+                          ) : projectPools.length === 1 ? (
+                            <View style={styles.autoSelectedBox}>
+                              <Ionicons 
+                                name={projectPools[0].type === 'spa' ? 'water' : 'fitness'} 
+                                size={20} 
+                                color="#4caf50" 
+                              />
+                              <Text style={styles.autoSelectedText}>
+                                {projectPools[0].name} ({projectPools[0].type === 'spa' ? 'Spa' : 'Piscina'})
+                              </Text>
+                            </View>
+                          ) : (
+                            <TouchableOpacity
+                              style={styles.dropdownButton}
+                              onPress={() => setShowPoolPicker(true)}
+                            >
+                              <View style={styles.dropdownContent}>
+                                {selectedPool ? (
+                                  <>
+                                    <Ionicons 
+                                      name={selectedPool.type === 'spa' ? 'water' : 'fitness'} 
+                                      size={20} 
+                                      color="#0066CC" 
+                                    />
+                                    <Text style={styles.dropdownText}>
+                                      {selectedPool.name} ({selectedPool.type === 'spa' ? 'Spa' : 'Piscina'})
+                                    </Text>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Ionicons name="chevron-down-circle-outline" size={20} color="#999" />
+                                    <Text style={styles.dropdownPlaceholder}>Selecciona piscina o spa</Text>
+                                  </>
+                                )}
+                              </View>
+                              <Ionicons name="chevron-down" size={20} color="#666" />
+                            </TouchableOpacity>
+                          )}
                         </View>
-                        <View style={styles.selectedProjectInfo}>
-                          <Text style={styles.selectedProjectLabel}>Ubicación:</Text>
-                          <Text style={styles.selectedProjectValue}>{selectedProject.location}</Text>
+
+                        {/* Info del proyecto seleccionado */}
+                        <View style={styles.selectedProjectCard}>
+                          <Text style={styles.selectedProjectTitle}>
+                            <Ionicons name="information-circle" size={16} /> Información del Proyecto
+                          </Text>
+                          <View style={styles.selectedProjectInfo}>
+                            <Text style={styles.selectedProjectLabel}>Cliente:</Text>
+                            <Text style={styles.selectedProjectValue}>{selectedProject.client_name}</Text>
+                          </View>
+                          <View style={styles.selectedProjectInfo}>
+                            <Text style={styles.selectedProjectLabel}>Ubicación:</Text>
+                            <Text style={styles.selectedProjectValue}>{selectedProject.location}</Text>
+                          </View>
+                          {selectedProject.client_email && (
+                            <View style={styles.selectedProjectInfo}>
+                              <Text style={styles.selectedProjectLabel}>Email:</Text>
+                              <Text style={styles.selectedProjectValue}>{selectedProject.client_email}</Text>
+                            </View>
+                          )}
+                          {selectedProject.client_phone && (
+                            <View style={styles.selectedProjectInfo}>
+                              <Text style={styles.selectedProjectLabel}>Teléfono:</Text>
+                              <Text style={styles.selectedProjectValue}>{selectedProject.client_phone}</Text>
+                            </View>
+                          )}
+                          {selectedPool && selectedPool.gallons && (
+                            <View style={styles.selectedProjectInfo}>
+                              <Text style={styles.selectedProjectLabel}>Galonaje:</Text>
+                              <Text style={styles.selectedProjectValue}>{selectedPool.gallons.toLocaleString()} gal</Text>
+                            </View>
+                          )}
                         </View>
-                        {selectedProject.client_email && (
-                          <View style={styles.selectedProjectInfo}>
-                            <Text style={styles.selectedProjectLabel}>Email:</Text>
-                            <Text style={styles.selectedProjectValue}>{selectedProject.client_email}</Text>
-                          </View>
-                        )}
-                        {selectedProject.client_phone && (
-                          <View style={styles.selectedProjectInfo}>
-                            <Text style={styles.selectedProjectLabel}>Teléfono:</Text>
-                            <Text style={styles.selectedProjectValue}>{selectedProject.client_phone}</Text>
-                          </View>
-                        )}
-                        {selectedProject.pool_gallons && (
-                          <View style={styles.selectedProjectInfo}>
-                            <Text style={styles.selectedProjectLabel}>Galonaje:</Text>
-                            <Text style={styles.selectedProjectValue}>{selectedProject.pool_gallons.toLocaleString()} gal</Text>
-                          </View>
-                        )}
-                      </View>
+                      </>
                     )}
 
                     <View style={styles.inputGroup}>
@@ -1181,6 +1492,23 @@ export default function UnifiedNewReportScreen() {
 
           {currentStep === 6 && (
             <View style={styles.stepContainer}>
+              {/* Botón de Recomendaciones de Químicos */}
+              <TouchableOpacity 
+                style={styles.recommendationsButton}
+                onPress={() => setShowRecommendationsModal(true)}
+              >
+                <View style={styles.recommendationsButtonContent}>
+                  <Ionicons name="flask" size={24} color="#fff" />
+                  <View style={styles.recommendationsButtonText}>
+                    <Text style={styles.recommendationsButtonTitle}>💊 Ver Recomendaciones</Text>
+                    <Text style={styles.recommendationsButtonSubtitle}>
+                      Basado en parámetros actuales del agua
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={24} color="#fff" />
+                </View>
+              </TouchableOpacity>
+
               <View style={styles.stepHeader}>
                 <View style={[styles.stepIconLarge, { backgroundColor: '#e3f2fd' }]}>
                   <Ionicons name="color-filter" size={32} color="#00ACC1" />
@@ -1462,7 +1790,10 @@ export default function UnifiedNewReportScreen() {
                   ]}
                   onPress={() => {
                     setSelectedProject(project);
+                    setSelectedPool(null); // Reset pool selection
                     setShowProjectPicker(false);
+                    // Cargar piscinas/spas del proyecto
+                    loadProjectPools(project.id);
                     // Guardar hora de entrada cuando selecciona el proyecto
                     if (!entryTime) {
                       const crTime = getCostaRicaTimestamp();
@@ -1508,6 +1839,177 @@ export default function UnifiedNewReportScreen() {
                 </TouchableOpacity>
               ))}
             </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Pool/Spa Picker Modal */}
+      <Modal
+        visible={showPoolPicker}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowPoolPicker(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.pickerModal}>
+            <View style={styles.pickerHeader}>
+              <Text style={styles.pickerTitle}>Seleccionar Piscina/Spa</Text>
+              <TouchableOpacity onPress={() => setShowPoolPicker(false)}>
+                <Ionicons name="close-circle" size={28} color="#666" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView style={styles.pickerList}>
+              {projectPools.map((pool) => (
+                <TouchableOpacity
+                  key={pool.id}
+                  style={[
+                    styles.pickerItem,
+                    selectedPool?.id === pool.id && styles.pickerItemSelected
+                  ]}
+                  onPress={() => {
+                    setSelectedPool(pool);
+                    setShowPoolPicker(false);
+                  }}
+                >
+                  <View style={styles.pickerItemContent}>
+                    <View style={[
+                      styles.pickerItemIcon,
+                      selectedPool?.id === pool.id && styles.pickerItemIconSelected
+                    ]}>
+                      <Ionicons 
+                        name={pool.type === 'spa' ? 'water' : 'fitness'} 
+                        size={24} 
+                        color={selectedPool?.id === pool.id ? '#0066CC' : '#666'} 
+                      />
+                    </View>
+                    <View style={styles.pickerItemInfo}>
+                      <Text style={[
+                        styles.pickerItemName,
+                        selectedPool?.id === pool.id && styles.pickerItemNameSelected
+                      ]}>
+                        {pool.name}
+                      </Text>
+                      <Text style={styles.pickerItemDetails}>
+                        {pool.type === 'spa' ? '♨️ Spa' : '🏊 Piscina'}
+                      </Text>
+                      {pool.gallons && (
+                        <Text style={styles.pickerItemPool}>
+                          💧 {pool.gallons.toLocaleString()} galones
+                        </Text>
+                      )}
+                    </View>
+                    {selectedPool?.id === pool.id && (
+                      <Ionicons name="checkmark-circle" size={28} color="#0066CC" />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Recomendaciones de Químicos */}
+      <Modal
+        visible={showRecommendationsModal}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setShowRecommendationsModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={[styles.modalHeader, { paddingTop: Math.max(insets.top + 10, 50) }]}>
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setShowRecommendationsModal(false)}
+            >
+              <Ionicons name="close" size={28} color="#1a1a1a" />
+            </TouchableOpacity>
+            <View style={styles.modalHeaderContent}>
+              <Text style={styles.modalTitle}>💊 Recomendaciones de Químicos</Text>
+              <Text style={styles.modalSubtitle}>
+                Basado en {selectedPool?.gallons?.toLocaleString() || '10,000'} galones
+              </Text>
+            </View>
+          </View>
+
+          <ScrollView style={styles.modalContent}>
+            {(() => {
+              const recommendations = calculateRecommendations();
+              
+              if (recommendations.length === 0) {
+                return (
+                  <View style={styles.perfectCard}>
+                    <Text style={styles.perfectEmoji}>✅</Text>
+                    <Text style={styles.perfectTitle}>¡Agua en Condiciones Óptimas!</Text>
+                    <Text style={styles.perfectText}>
+                      Todos los parámetros están dentro del rango ideal. No se requieren químicos adicionales.
+                    </Text>
+                  </View>
+                );
+              }
+
+              return (
+                <>
+                  <Text style={styles.recommendationsInfoText}>
+                    Estas son las cantidades recomendadas para alcanzar los niveles ideales:
+                  </Text>
+                  {recommendations.map((rec, index) => (
+                    <View key={index} style={styles.recommendationCard}>
+                      <View style={styles.chemicalHeader}>
+                        <Text style={styles.chemicalName}>{rec.chemical}</Text>
+                        {rec.amount > 0 && (
+                          <Text style={styles.chemicalAmount}>
+                            {rec.unit === 'kg' 
+                              ? `${rec.amount.toFixed(2)} kg`
+                              : rec.unit === 'gl'
+                              ? `${rec.amount.toFixed(2)} gl`
+                              : rec.unit === 'g'
+                              ? rec.amount >= 1000
+                                ? `${(rec.amount / 1000).toFixed(2)} kg`
+                                : `${Math.round(rec.amount)} g`
+                              : rec.unit.includes('bolsa')
+                              ? `${rec.amount} ${rec.unit}`
+                              : rec.unit.includes('tableta')
+                              ? `${rec.amount} ${rec.unit}`
+                              : `${rec.amount} ${rec.unit}`}
+                          </Text>
+                        )}
+                      </View>
+                      <Text style={styles.chemicalReason}>{rec.reason}</Text>
+                      {!rec.isMaintenance && (
+                        <View style={styles.valuesRow}>
+                          <View style={styles.valueItem}>
+                            <Text style={styles.valueLabel}>Actual</Text>
+                            <Text style={styles.valueCurrent}>{rec.current}</Text>
+                          </View>
+                          <Text style={styles.arrow}>→</Text>
+                          <View style={styles.valueItem}>
+                            <Text style={styles.valueLabel}>Ideal</Text>
+                            <Text style={styles.valueIdeal}>{rec.ideal}</Text>
+                          </View>
+                        </View>
+                      )}
+                    </View>
+                  ))}
+                  <View style={styles.warningCard}>
+                    <Text style={styles.warningIcon}>⚠️</Text>
+                    <Text style={styles.warningText}>
+                      Estas son recomendaciones aproximadas. Siempre siga las instrucciones del fabricante del químico y ajuste según sea necesario.
+                    </Text>
+                  </View>
+                </>
+              );
+            })()}
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity 
+              style={styles.continueButton}
+              onPress={() => setShowRecommendationsModal(false)}
+            >
+              <Text style={styles.continueButtonText}>Continuar con el Reporte</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>
@@ -2484,5 +2986,243 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: '600',
   },
-});
 
+  // Pool/Spa Selector Styles
+  warningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff3cd',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ffc107',
+  },
+  warningText: {
+    fontSize: 14,
+    color: '#856404',
+    marginLeft: 8,
+    flex: 1,
+  },
+  autoSelectedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#d4edda',
+    borderRadius: 8,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#c3e6cb',
+  },
+  autoSelectedText: {
+    fontSize: 14,
+    color: '#155724',
+    marginLeft: 8,
+    fontWeight: '500',
+    flex: 1,
+  },
+  
+  // Recommendations Button
+  recommendationsButton: {
+    backgroundColor: '#9c27b0',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 24,
+    shadowColor: '#9c27b0',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  recommendationsButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  recommendationsButtonText: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  recommendationsButtonTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 4,
+  },
+  recommendationsButtonSubtitle: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.9)',
+  },
+
+  // Recommendations Modal
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#f5f5f5',
+  },
+  modalHeader: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  modalHeaderContent: {
+    alignItems: 'center',
+    marginTop: 12,
+  },
+  modalCloseButton: {
+    position: 'absolute',
+    left: 20,
+    top: 50,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#f5f7fa',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
+  },
+  modalTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: '#666',
+  },
+  modalContent: {
+    flex: 1,
+    padding: 15,
+  },
+  recommendationsInfoText: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  perfectCard: {
+    backgroundColor: '#e8f5e9',
+    borderRadius: 12,
+    padding: 30,
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  perfectEmoji: {
+    fontSize: 60,
+    marginBottom: 15,
+  },
+  perfectTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#2e7d32',
+    marginBottom: 10,
+  },
+  perfectText: {
+    fontSize: 16,
+    color: '#4caf50',
+    textAlign: 'center',
+  },
+  recommendationCard: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  chemicalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  chemicalName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1976d2',
+    flex: 1,
+  },
+  chemicalAmount: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#d32f2f',
+  },
+  chemicalReason: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 12,
+  },
+  valuesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  valueItem: {
+    alignItems: 'center',
+  },
+  valueLabel: {
+    fontSize: 12,
+    color: '#999',
+    marginBottom: 4,
+  },
+  valueCurrent: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#d32f2f',
+  },
+  valueIdeal: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#2e7d32',
+  },
+  arrow: {
+    fontSize: 24,
+    color: '#999',
+    marginHorizontal: 20,
+  },
+  warningCard: {
+    backgroundColor: '#fff3e0',
+    borderRadius: 12,
+    padding: 15,
+    flexDirection: 'row',
+    marginTop: 10,
+    marginBottom: 20,
+  },
+  warningIcon: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#e65100',
+    lineHeight: 18,
+  },
+  modalFooter: {
+    padding: 15,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+  },
+  continueButton: {
+    backgroundColor: '#1976d2',
+    borderRadius: 8,
+    padding: 15,
+    alignItems: 'center',
+  },
+  continueButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+});

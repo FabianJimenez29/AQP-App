@@ -112,6 +112,20 @@ const ReportPreviewScreen: React.FC<ReportPreviewScreenProps> = ({ route, naviga
   // Genera el HTML del reporte con imágenes en base64
   const htmlContent = (htmlReady && logoBase64) ? generateReportHTML(processedReportData, logoBase64) : '';
 
+  // Debug: Ver datos de piscina/spa
+  useEffect(() => {
+    if (processedReportData) {
+      console.log('🏊 Pool data in preview:', {
+        poolName: processedReportData.poolName,
+        poolType: processedReportData.poolType,
+        poolGallons: processedReportData.poolGallons,
+        pool_name: processedReportData.pool_name,
+        pool_type: processedReportData.pool_type,
+        pool_gallons: processedReportData.pool_gallons,
+      });
+    }
+  }, [processedReportData]);
+
   /**
    * Genera el PDF localmente
    */
