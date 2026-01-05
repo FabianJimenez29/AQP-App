@@ -31,6 +31,14 @@ interface Project {
   created_at: string;
 }
 
+interface ProjectPool {
+  id: number;
+  project_id: string;
+  name: string;
+  type: 'pool' | 'spa';
+  gallons?: number;
+}
+
 export default function AdminProjectsScreen() {
   const navigation = useNavigation();
   const token = useSelector((state: RootState) => state.auth.token);
@@ -41,6 +49,19 @@ export default function AdminProjectsScreen() {
   const [modalVisible, setModalVisible] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  
+  // Estados para gestión de piscinas
+  const [poolsModalVisible, setPoolsModalVisible] = useState(false);
+  const [addPoolModalVisible, setAddPoolModalVisible] = useState(false);
+  const [editPoolMode, setEditPoolMode] = useState(false);
+  const [selectedPool, setSelectedPool] = useState<ProjectPool | null>(null);
+  const [projectPools, setProjectPools] = useState<ProjectPool[]>([]);
+  const [loadingPools, setLoadingPools] = useState(false);
+  const [poolFormData, setPoolFormData] = useState({
+    name: '',
+    type: 'pool' as 'pool' | 'spa',
+    gallons: '',
+  });
 
   const [formData, setFormData] = useState({
     project_name: '',
@@ -155,6 +176,136 @@ export default function AdminProjectsScreen() {
               loadProjects();
             } catch (error: any) {
               Alert.alert('Error', error.message || 'No se pudo eliminar el proyecto');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Funciones para gestionar piscinas
+  const openPoolsModal = async (project: Project) => {
+    setSelectedProject(project);
+    setPoolsModalVisible(true);
+    await loadProjectPools(project.id.toString());
+  };
+
+  const loadProjectPools = async (projectId: string) => {
+    setLoadingPools(true);
+    try {
+      const pools = await ApiService.getProjectPools(projectId, token!);
+      setProjectPools(pools);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudieron cargar las piscinas');
+    } finally {
+      setLoadingPools(false);
+    }
+  };
+
+  const openAddPoolModal = () => {
+    setPoolsModalVisible(false);
+    setTimeout(() => {
+      setEditPoolMode(false);
+      setSelectedPool(null);
+      setPoolFormData({
+        name: '',
+        type: 'pool',
+        gallons: '',
+      });
+      setAddPoolModalVisible(true);
+    }, 300);
+  };
+
+  const openEditPoolModal = (pool: ProjectPool) => {
+    setPoolsModalVisible(false);
+    setTimeout(() => {
+      setEditPoolMode(true);
+      setSelectedPool(pool);
+      setPoolFormData({
+        name: pool.name,
+        type: pool.type,
+        gallons: pool.gallons?.toString() || '',
+      });
+      setAddPoolModalVisible(true);
+    }, 300);
+  };
+
+  const handleCreatePool = async () => {
+    try {
+      // Validaciones básicas
+      if (!poolFormData.name || poolFormData.name.trim() === '') {
+        Alert.alert('Error', 'El nombre de la piscina es obligatorio');
+        return;
+      }
+
+      if (!selectedProject) {
+        Alert.alert('Error', 'No hay proyecto seleccionado');
+        return;
+      }
+
+      // Preparar datos
+      const poolData: any = {
+        project_id: selectedProject.id.toString(),
+        name: poolFormData.name.trim(),
+        type: poolFormData.type,
+      };
+
+      // Agregar galones si existe
+      if (poolFormData.gallons && poolFormData.gallons.trim() !== '') {
+        const gallonsNum = parseInt(poolFormData.gallons);
+        if (!isNaN(gallonsNum) && gallonsNum > 0) {
+          poolData.gallons = gallonsNum;
+        }
+      }
+
+      if (editPoolMode && selectedPool) {
+        // Editar piscina existente
+        await ApiService.updateProjectPool(selectedPool.id.toString(), poolData, token!);
+        Alert.alert('Éxito', 'Piscina actualizada correctamente');
+      } else {
+        // Crear nueva piscina
+        await ApiService.createProjectPool(poolData, token!);
+        Alert.alert('Éxito', 'Piscina agregada correctamente');
+      }
+      
+      // Cerrar modal y resetear formulario
+      setAddPoolModalVisible(false);
+      setEditPoolMode(false);
+      setSelectedPool(null);
+      setPoolFormData({ name: '', type: 'pool', gallons: '' });
+      
+      // Actualizar lista de piscinas
+      await loadProjectPools(selectedProject.id.toString());
+      
+      // Volver al modal de piscinas
+      setTimeout(() => {
+        setPoolsModalVisible(true);
+      }, 300);
+    } catch (error: any) {
+      console.error('Error creating/updating pool:', error);
+      Alert.alert(
+        'Error', 
+        error.message || `No se pudo ${editPoolMode ? 'actualizar' : 'agregar'} la piscina. Intenta nuevamente.`
+      );
+    }
+  };
+
+  const handleDeletePool = (pool: ProjectPool) => {
+    Alert.alert(
+      '⚠️ Confirmar eliminación',
+      `¿Estás seguro de eliminar "${pool.name}"?\n\nEsta acción NO SE PUEDE DESHACER.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ApiService.deleteProjectPool(pool.id.toString(), token!);
+              Alert.alert('Éxito', 'Piscina eliminada correctamente');
+              await loadProjectPools(selectedProject!.id.toString());
+            } catch (error: any) {
+              Alert.alert('Error', error.message || 'No se pudo eliminar la piscina');
             }
           },
         },
@@ -281,6 +432,12 @@ export default function AdminProjectsScreen() {
                     </View>
                   </View>
                   <View style={styles.projectActions}>
+                    <TouchableOpacity
+                      onPress={() => openPoolsModal(project)}
+                      style={styles.actionButton}
+                    >
+                      <Ionicons name="water" size={20} color="#0EA5E9" />
+                    </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => openEditModal(project)}
                       style={styles.actionButton}
@@ -427,6 +584,179 @@ export default function AdminProjectsScreen() {
               >
                 <Text style={styles.saveButtonText}>
                   {editMode ? 'Guardar' : 'Crear'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Gestión de Piscinas */}
+      <Modal
+        visible={poolsModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPoolsModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                Piscinas - {selectedProject?.project_name}
+              </Text>
+              <TouchableOpacity onPress={() => setPoolsModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              {loadingPools ? (
+                <ActivityIndicator size="large" color="#0284C7" style={{ marginTop: 20 }} />
+              ) : projectPools.length === 0 ? (
+                <View style={styles.emptyPoolsContainer}>
+                  <Ionicons name="water-outline" size={48} color="#CBD5E1" />
+                  <Text style={styles.emptyPoolsText}>No hay piscinas registradas</Text>
+                </View>
+              ) : (
+                projectPools.map((pool) => (
+                  <View key={pool.id} style={styles.poolCard}>
+                    <View style={styles.poolInfo}>
+                      <Ionicons
+                        name={pool.type === 'pool' ? 'water' : 'fitness'}
+                        size={24}
+                        color="#0EA5E9"
+                      />
+                      <View style={styles.poolDetails}>
+                        <Text style={styles.poolName}>{pool.name}</Text>
+                        <Text style={styles.poolType}>
+                          {pool.type === 'pool' ? 'Piscina' : 'Spa'}
+                          {pool.gallons ? ` • ${pool.gallons} gal` : ''}
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.poolActions}>
+                      <TouchableOpacity
+                        onPress={() => openEditPoolModal(pool)}
+                        style={styles.actionButton}
+                      >
+                        <Ionicons name="pencil" size={20} color="#0EA5E9" />
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleDeletePool(pool)}
+                        style={styles.actionButton}
+                      >
+                        <Ionicons name="trash" size={20} color="#EF4444" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.addPoolButton}
+                onPress={openAddPoolModal}
+              >
+                <Ionicons name="add" size={20} color="#FFFFFF" />
+                <Text style={styles.addPoolButtonText}>Agregar Piscina</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de Agregar Piscina */}
+      <Modal
+        visible={addPoolModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setAddPoolModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {editPoolMode ? 'Editar Piscina' : 'Agregar Piscina'}
+              </Text>
+              <TouchableOpacity onPress={() => setAddPoolModalVisible(false)}>
+                <Ionicons name="close" size={24} color="#64748B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody}>
+              <Text style={styles.inputLabel}>Nombre *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ej: Piscina Principal"
+                value={poolFormData.name}
+                onChangeText={(text) => setPoolFormData({ ...poolFormData, name: text })}
+              />
+
+              <Text style={styles.inputLabel}>Tipo *</Text>
+              <View style={styles.statusSelector}>
+                <TouchableOpacity
+                  style={[
+                    styles.statusOption,
+                    poolFormData.type === 'pool' && styles.statusOptionActive,
+                  ]}
+                  onPress={() => setPoolFormData({ ...poolFormData, type: 'pool' })}
+                >
+                  <Ionicons name="water" size={20} color={poolFormData.type === 'pool' ? '#F59E0B' : '#64748B'} />
+                  <Text
+                    style={[
+                      styles.statusOptionText,
+                      poolFormData.type === 'pool' && styles.statusOptionTextActive,
+                    ]}
+                  >
+                    Piscina
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.statusOption,
+                    poolFormData.type === 'spa' && styles.statusOptionActive,
+                  ]}
+                  onPress={() => setPoolFormData({ ...poolFormData, type: 'spa' })}
+                >
+                  <Ionicons name="fitness" size={20} color={poolFormData.type === 'spa' ? '#F59E0B' : '#64748B'} />
+                  <Text
+                    style={[
+                      styles.statusOptionText,
+                      poolFormData.type === 'spa' && styles.statusOptionTextActive,
+                    ]}
+                  >
+                    Spa
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.inputLabel}>Galones (opcional)</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="Ej: 10000"
+                value={poolFormData.gallons}
+                onChangeText={(text) => setPoolFormData({ ...poolFormData, gallons: text })}
+                keyboardType="numeric"
+              />
+            </ScrollView>
+
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => {
+                  setPoolFormData({ name: '', type: 'pool', gallons: '' });
+                  setAddPoolModalVisible(false);
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleCreatePool}
+              >
+                <Text style={styles.saveButtonText}>
+                  {editPoolMode ? 'Guardar' : 'Agregar'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -655,6 +985,66 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   saveButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  // Estilos para piscinas
+  emptyPoolsContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+  },
+  emptyPoolsText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#94A3B8',
+  },
+  poolCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  poolInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  poolDetails: {
+    flex: 1,
+  },
+  poolName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  poolType: {
+    fontSize: 14,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  poolActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  addPoolButton: {
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    padding: 16,
+    borderRadius: 8,
+    backgroundColor: '#0EA5E9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addPoolButtonText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',

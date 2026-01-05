@@ -52,6 +52,15 @@ class ApiService {
     return this.currentApiUrl;
   }
 
+  // Validar que el token sea válido antes de usarlo
+  private validateToken(token: string | null | undefined): string {
+    if (!token || token === 'undefined' || token === 'null' || token.trim() === '') {
+      console.error('❌ Invalid token provided to API:', token);
+      throw new Error('Token de autenticación inválido. Por favor, inicia sesión nuevamente.');
+    }
+    return token.trim();
+  }
+
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     try {
       const url = `${this.currentApiUrl}${endpoint}`;
@@ -66,14 +75,31 @@ class ApiService {
       
       if (!response.ok) {
         let errorText = '';
+        let errorData: any = null;
+        
         try {
           errorText = await response.text();
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            // No es JSON, usar el texto como está
+          }
+          
           if (ENV_CONFIG.debugApi) {
             console.error('Server error response:', errorText);
           }
         } catch (e) {
           errorText = 'Could not read error response';
         }
+
+        // Si es error 401 con código INVALID_TOKEN, lanzar error especial
+        if (response.status === 401 && errorData?.code === 'INVALID_TOKEN') {
+          const error: any = new Error(errorData.error || 'Token inválido');
+          error.code = 'INVALID_TOKEN';
+          error.requiresLogout = true;
+          throw error;
+        }
+        
         throw new Error(`HTTP error! status: ${response.status}. Server response: ${errorText}`);
       }
       
@@ -154,31 +180,34 @@ class ApiService {
   }
 
   async createReport(report: Report, token: string): Promise<Report> {
+    const validToken = this.validateToken(token);
     return this.request<Report>('/reports', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${validToken}`,
       },
       body: JSON.stringify(report),
     });
   }
 
   async updateReport(token: string, reportId: string, updateData: Partial<Report>): Promise<Report> {
+    const validToken = this.validateToken(token);
     return this.request<Report>(`/reports/${reportId}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${validToken}`,
       },
       body: JSON.stringify(updateData),
     });
   }
 
   async getReports(token: string): Promise<Report[]> {
+    const validToken = this.validateToken(token);
     return this.request<Report[]>('/reports', {
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${validToken}`,
       },
     });
   }
@@ -461,6 +490,83 @@ class ApiService {
     });
     // Extraer el array de data si viene envuelto
     return response.data || response;
+  }
+
+  async createProjectPool(
+    poolData: { project_id: string; name: string; type: 'pool' | 'spa'; gallons?: number },
+    token: string
+  ): Promise<any> {
+    const response = await this.request('/project-pools', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(poolData),
+    });
+    return response.data || response;
+  }
+
+  async updateProjectPool(
+    id: number,
+    poolData: { name: string; type: 'pool' | 'spa'; gallons?: number },
+    token: string
+  ): Promise<any> {
+    const response = await this.request(`/project-pools/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(poolData),
+    });
+    return response.data || response;
+  }
+
+  async deleteProjectPool(id: number, token: string): Promise<any> {
+    const response = await this.request(`/project-pools/${id}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response;
+  }
+
+  async generateMonthlyPDF(data: any, token: string): Promise<{ success: boolean; pdf: string; filename: string }> {
+    try {
+      const validToken = this.validateToken(token);
+      
+      const response = await fetch(`${this.currentApiUrl}/reports/monthly-pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${validToken}`,
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error al generar PDF: ${response.status} - ${errorText}`);
+      }
+
+      // El servidor ahora devuelve JSON con el PDF en base64
+      const result = await response.json();
+      
+      if (!result.success || !result.pdf) {
+        throw new Error('El servidor no devolvió el PDF correctamente');
+      }
+
+      return {
+        success: true,
+        pdf: result.pdf,
+        filename: result.filename || 'reporte.pdf'
+      };
+    } catch (error: any) {
+      console.error('Error generating PDF:', error);
+      throw error;
+    }
   }
 }
 
