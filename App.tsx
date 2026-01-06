@@ -5,6 +5,8 @@ import { Provider } from 'react-redux';
 import { StatusBar } from 'expo-status-bar';
 import { store } from './store';
 import updateService from './services/updateService';
+import * as Updates from 'expo-updates';
+import { Alert } from 'react-native';
 
 import LoginScreen from './screens/LoginScreen';
 import DashboardScreen from './screens/DashboardScreen';
@@ -32,11 +34,52 @@ function AppContent() {
   const navigationRef = useRef<any>(null);
 
   useEffect(() => {
+    // Servicio de actualización de APK para Android
     updateService.startAutoCheck(30);
+    
+    // Forzar verificación de OTA updates (Expo Updates)
+    checkForOTAUpdates();
+    
     return () => {
       updateService.stopAutoCheck();
     };
   }, []);
+
+  const checkForOTAUpdates = async () => {
+    try {
+      console.log('🔍 Verificando actualizaciones OTA...');
+      
+      // Verificar si hay actualizaciones disponibles
+      const update = await Updates.checkForUpdateAsync();
+      
+      if (update.isAvailable) {
+        console.log('✅ Actualización OTA disponible, descargando...');
+        
+        // Descargar la actualización
+        await Updates.fetchUpdateAsync();
+        
+        console.log('✅ Actualización descargada, aplicando...');
+        
+        // Mostrar alerta y reiniciar
+        Alert.alert(
+          '🎉 Actualización Disponible',
+          'Se ha descargado una nueva versión. La app se reiniciará para aplicar los cambios.',
+          [
+            {
+              text: 'Reiniciar Ahora',
+              onPress: async () => {
+                await Updates.reloadAsync();
+              }
+            }
+          ]
+        );
+      } else {
+        console.log('ℹ️ No hay actualizaciones OTA disponibles');
+      }
+    } catch (error) {
+      console.error('❌ Error al verificar actualizaciones OTA:', error);
+    }
+  };
 
   return (
     <NavigationContainer ref={navigationRef}>
