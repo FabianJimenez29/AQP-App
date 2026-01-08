@@ -101,6 +101,12 @@ export default function AdminDashboardScreen() {
   const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = React.useState(false);
 
+  // Detectar logo según el email del usuario
+  const isCartapate = user?.email?.toLowerCase().includes('@cartapate.com');
+  const logoSource = isCartapate 
+    ? require('../assets/images/LogoCartapate.png')
+    : require('../assets/images/AQPLogoBlack.png');
+
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 1000);
@@ -153,7 +159,7 @@ export default function AdminDashboardScreen() {
         <View style={styles.headerTop}>
           <View style={styles.logoSection}>
             <Image
-              source={require('../assets/images/AQPLogoBlack.png')}
+              source={logoSource}
               style={styles.logo}
               resizeMode="contain"
             />

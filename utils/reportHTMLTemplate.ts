@@ -6,7 +6,11 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { es } from 'date-fns/locale';
 
-export const generateReportHTML = (report: any, logoBase64: string = ''): string => {
+export const generateReportHTML = (report: any, logoBase64: string = '', userEmail: string = ''): string => {
+  // Detectar empresa según email del usuario
+  const isCartapate = userEmail && userEmail.toLowerCase().includes('@cartapate.com');
+  const companyName = isCartapate ? 'Cartapate' : 'Aqua Pool Blue';
+  
   // Formatear fechas usando date-fns-tz para convertir a Costa Rica
   const formatDate = (dateString: string) => {
     if (!dateString) return 'No registrado';
@@ -625,7 +629,7 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
     <div class="header">
       <div class="header-content">
         <div class="logo-section">
-          ${logoBase64 ? `<img src="${logoBase64}" alt="AquaPool Blue" class="logo-img">` : '<div class="logo">🏊‍♂️ AquaPool Blue</div>'}
+          ${logoBase64 ? `<img src="${logoBase64}" alt="${companyName}" class="logo-img">` : `<div class="logo">🏊‍♂️ ${companyName}</div>`}
         </div>
         <div class="header-info">
           <div class="doc-title">Reporte de Mantenimiento</div>
@@ -643,7 +647,7 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
       <div class="info-grid">
         <div class="info-card">
           <div class="info-label">Cliente / Proyecto</div>
-          <div class="info-value">${report.clientName || report.projectName || 'N/A'}</div>
+          <div class="info-value">${report.projectName || report.project_name || report.clientName || report.client_name || 'N/A'}</div>
         </div>
         <div class="info-card">
           <div class="info-label">Técnico Responsable</div>
@@ -653,12 +657,10 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
           <div class="info-label">Fecha del Servicio</div>
           <div class="info-value">${serviceDate}</div>
         </div>
-        ${(report.poolName || report.pool_name) ? `
         <div class="info-card">
-          <div class="info-label">${(report.poolType || report.pool_type) === 'spa' ? '♨️ Spa' : '🏊 Piscina'}</div>
-          <div class="info-value">${report.poolName || report.pool_name}${(report.poolGallons || report.pool_gallons) ? ` (${report.poolGallons || report.pool_gallons} gal)` : ''}</div>
+          <div class="info-label">Tipo de Mantenimiento</div>
+          <div class="info-value">${(report.pool_type || report.poolType) === 'spa' ? 'Spa' : 'Piscina'}${(report.pool_name || report.poolName) ? ` - ${report.pool_name || report.poolName}` : ''}${(report.pool_gallons || report.poolGallons) ? ` (${report.pool_gallons || report.poolGallons} gal)` : ''}</div>
         </div>
-        ` : ''}
         <div class="info-card">
           <div class="info-label">Hora de Entrada</div>
           <div class="info-value">${entryTime}</div>
@@ -734,7 +736,7 @@ export const generateReportHTML = (report: any, logoBase64: string = ''): string
 
     <!-- Footer -->
     <div class="footer">
-      <div class="footer-logo">Aqua Pool Blue</div>
+      <div class="footer-logo">${companyName}</div>
       <div>Sistema de Gestión de Mantenimiento de Piscinas</div>
       <div>© ${new Date().getFullYear()} - Todos los derechos reservados</div>
     </div>

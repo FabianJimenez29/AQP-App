@@ -29,6 +29,13 @@ export default function DashboardScreen() {
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
 
+  // Detectar logo según el email del usuario
+  const isCartapate = user?.email?.toLowerCase().includes('@cartapate.com');
+  const logoSource = isCartapate 
+    ? require('../assets/images/LogoCartapate.png')
+    : require('../assets/images/AQPLogoBlack.png');
+  const companyName = isCartapate ? 'Cartapate' : 'Aqua Pool Blue';
+
   useEffect(() => {
     const loadStats = () => {
       dispatch(fetchUserStats());
@@ -85,7 +92,7 @@ export default function DashboardScreen() {
         <View style={styles.headerTop}>
           <View style={styles.logoSection}>
             <Image 
-              source={require('../assets/images/AQPLogoBlack.png')} 
+              source={logoSource} 
               style={styles.logo}
               resizeMode="contain"
             />

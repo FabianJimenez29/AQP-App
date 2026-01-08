@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { WebView } from 'react-native-webview';
 import { Asset } from 'expo-asset';
+import { useAppSelector } from '../store/hooks';
 import { Ionicons } from '@expo/vector-icons';
 import { generateReportHTML } from '../utils/reportHTMLTemplate';
 import { generatePDF, sharePDF, generateFileName, convertImageToBase64 } from '../utils/pdfGenerator';
@@ -28,6 +29,7 @@ interface ReportPreviewScreenProps {
 
 const ReportPreviewScreen: React.FC<ReportPreviewScreenProps> = ({ route, navigation }) => {
   const { reportData } = route.params;
+  const user = useAppSelector((state) => state.auth.user);
   const [pdfPath, setPdfPath] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sharing, setSharing] = useState(false);
@@ -37,12 +39,20 @@ const ReportPreviewScreen: React.FC<ReportPreviewScreenProps> = ({ route, naviga
   const webViewRef = useRef<any>(null);
 
   /**
-   * Carga y convierte el logo a base64
+   * Carga y convierte el logo a base64 según el usuario
    */
   useEffect(() => {
     const loadLogo = async () => {
       try {
-        const logo = Asset.fromModule(require('../assets/images/AQPLogoBlack.png'));
+        // Detectar si es usuario de Cartapate
+        const isCartapate = user?.email?.toLowerCase().includes('@cartapate.com');
+        const logoPath = isCartapate 
+          ? require('../assets/images/LogoCartapate.png')
+          : require('../assets/images/AQPLogoBlack.png');
+        
+        console.log('🎨 Cargando logo:', isCartapate ? 'Cartapate' : 'AquaPool', 'para usuario:', user?.email);
+        
+        const logo = Asset.fromModule(logoPath);
         await logo.downloadAsync();
         console.log('📷 Logo descargado, URI:', logo.localUri);
         const base64Logo = await convertImageToBase64(logo.localUri || '');
@@ -53,7 +63,7 @@ const ReportPreviewScreen: React.FC<ReportPreviewScreenProps> = ({ route, naviga
       }
     };
     loadLogo();
-  }, []);
+  }, [user]);
 
   /**
    * Convierte las imágenes a base64 al cargar
@@ -110,7 +120,7 @@ const ReportPreviewScreen: React.FC<ReportPreviewScreenProps> = ({ route, naviga
   }, [logoBase64]);
 
   // Genera el HTML del reporte con imágenes en base64
-  const htmlContent = (htmlReady && logoBase64) ? generateReportHTML(processedReportData, logoBase64) : '';
+  const htmlContent = (htmlReady && logoBase64) ? generateReportHTML(processedReportData, logoBase64, user?.email || '') : '';
 
   // Debug: Ver datos de piscina/spa
   useEffect(() => {
