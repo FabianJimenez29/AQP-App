@@ -493,7 +493,7 @@ class ApiService {
   }
 
   async createProjectPool(
-    poolData: { project_id: string; name: string; type: 'pool' | 'spa'; gallons?: number },
+    poolData: { project_id: string; name: string; type: 'pool' | 'spa' | 'fountain'; gallons?: number },
     token: string
   ): Promise<any> {
     const response = await this.request('/project-pools', {
@@ -509,7 +509,7 @@ class ApiService {
 
   async updateProjectPool(
     id: number,
-    poolData: { name: string; type: 'pool' | 'spa'; gallons?: number },
+    poolData: { name: string; type: 'pool' | 'spa' | 'fountain'; gallons?: number },
     token: string
   ): Promise<any> {
     const response = await this.request(`/project-pools/${id}`, {

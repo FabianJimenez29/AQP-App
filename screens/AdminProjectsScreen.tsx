@@ -35,7 +35,7 @@ interface ProjectPool {
   id: number;
   project_id: string;
   name: string;
-  type: 'pool' | 'spa';
+  type: 'pool' | 'spa' | 'fountain';
   gallons?: number;
 }
 
@@ -59,7 +59,7 @@ export default function AdminProjectsScreen() {
   const [loadingPools, setLoadingPools] = useState(false);
   const [poolFormData, setPoolFormData] = useState({
     name: '',
-    type: 'pool' as 'pool' | 'spa',
+    type: 'pool' as 'pool' | 'spa' | 'fountain',
     gallons: '',
   });
 
@@ -629,7 +629,7 @@ export default function AdminProjectsScreen() {
                       <View style={styles.poolDetails}>
                         <Text style={styles.poolName}>{pool.name}</Text>
                         <Text style={styles.poolType}>
-                          {pool.type === 'pool' ? 'Piscina' : 'Spa'}
+                          {pool.type === 'pool' ? 'Piscina' : pool.type === 'spa' ? 'Spa' : 'Espejo de agua - Fuente'}
                           {pool.gallons ? ` • ${pool.gallons} gal` : ''}
                         </Text>
                       </View>
@@ -727,6 +727,23 @@ export default function AdminProjectsScreen() {
                     ]}
                   >
                     Spa
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.statusOption,
+                    poolFormData.type === 'fountain' && styles.statusOptionActive,
+                  ]}
+                  onPress={() => setPoolFormData({ ...poolFormData, type: 'fountain' })}
+                >
+                  <Ionicons name="water-outline" size={20} color={poolFormData.type === 'fountain' ? '#F59E0B' : '#64748B'} />
+                  <Text
+                    style={[
+                      styles.statusOptionText,
+                      poolFormData.type === 'fountain' && styles.statusOptionTextActive,
+                    ]}
+                  >
+                    Espejo/Fuente
                   </Text>
                 </TouchableOpacity>
               </View>

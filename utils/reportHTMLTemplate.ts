@@ -659,7 +659,7 @@ export const generateReportHTML = (report: any, logoBase64: string = '', userEma
         </div>
         <div class="info-card">
           <div class="info-label">Tipo de Mantenimiento</div>
-          <div class="info-value">${(report.pool_type || report.poolType) === 'spa' ? 'Spa' : 'Piscina'}${(report.pool_name || report.poolName) ? ` - ${report.pool_name || report.poolName}` : ''}${(report.pool_gallons || report.poolGallons) ? ` (${report.pool_gallons || report.poolGallons} gal)` : ''}</div>
+          <div class="info-value">${(report.pool_type || report.poolType) === 'spa' ? 'Spa' : (report.pool_type || report.poolType) === 'fountain' ? 'Espejo de agua - Fuente' : 'Piscina'}${(report.pool_name || report.poolName) ? ` - ${report.pool_name || report.poolName}` : ''}${(report.pool_gallons || report.poolGallons) ? ` (${report.pool_gallons || report.poolGallons} gal)` : ''}</div>
         </div>
         <div class="info-card">
           <div class="info-label">Hora de Entrada</div>
