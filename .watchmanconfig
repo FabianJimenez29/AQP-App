@@ -1,0 +1,14 @@
+{
+  "ignore_dirs": [
+    "ios/Pods",
+    "ios/build",
+    "android/build",
+    "android/.gradle",
+    "dist",
+    "dist 2",
+    "android 2",
+    "android/app 2",
+    "android/gradle 2",
+    "ios/AquaPoolBlue 2"
+  ]
+}

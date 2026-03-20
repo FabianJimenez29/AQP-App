@@ -71,8 +71,8 @@ export default function DashboardScreen() {
     navigation.navigate('ReportHistory');
   };
 
-  const handleProductOrder = () => {
-    navigation.navigate('Products');
+  const handleBreakdownReport = () => {
+    navigation.navigate('BreakdownReport');
   };
 
   const handleProfile = () => {
@@ -214,14 +214,14 @@ export default function DashboardScreen() {
 
             <TouchableOpacity 
               style={[styles.actionButton, styles.actionButtonWarning]}
-              onPress={handleProductOrder}
+              onPress={handleBreakdownReport}
               activeOpacity={0.7}
             >
               <View style={styles.actionIconWrapper}>
-                <Ionicons name="storefront" size={32} color="#FF9800" />
+                <Ionicons name="warning" size={32} color="#FF9800" />
               </View>
-              <Text style={styles.actionTitle}>Pedidos</Text>
-              <Text style={styles.actionSubtitle}>Productos</Text>
+              <Text style={styles.actionTitle}>Reporte</Text>
+              <Text style={styles.actionSubtitle}>Averia</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 

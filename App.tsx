@@ -6,6 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { store } from './store';
 import updateService from './services/updateService';
 import * as Updates from 'expo-updates';
+import Constants from 'expo-constants';
 import { Alert } from 'react-native';
 
 import LoginScreen from './screens/LoginScreen';
@@ -17,6 +18,8 @@ import ProfileScreen from './screens/ProfileScreen';
 import ProductsScreen from './screens/ProductsScreen';
 import CartScreen from './screens/CartScreen';
 import ReportPreviewScreen from './screens/ReportPreviewScreen';
+import BreakdownReportScreen from './screens/BreakdownReportScreen';
+import BreakdownPreviewScreen from './screens/BreakdownPreviewScreen';
 import AdminReportPreviewScreen from './screens/AdminReportPreviewScreen';
 
 // Admin screens
@@ -47,6 +50,12 @@ function AppContent() {
 
   const checkForOTAUpdates = async () => {
     try {
+      const isExpoGo = Constants.appOwnership === 'expo';
+      if (__DEV__ || isExpoGo || !Updates.isEnabled) {
+        console.log('ℹ️ OTA omitido: disponible solo en build instalada (no Expo Go).');
+        return;
+      }
+
       console.log('🔍 Verificando actualizaciones OTA...');
       
       // Verificar si hay actualizaciones disponibles
@@ -105,6 +114,8 @@ function AppContent() {
         <Stack.Screen name="ReportHistory" component={ReportHistoryScreen} />
         <Stack.Screen name="Products" component={ProductsScreen} />
         <Stack.Screen name="Cart" component={CartScreen} />
+        <Stack.Screen name="BreakdownReport" component={BreakdownReportScreen} />
+        <Stack.Screen name="BreakdownPreview" component={BreakdownPreviewScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
         
         {/* Admin Screens */}

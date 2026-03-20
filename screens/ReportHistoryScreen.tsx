@@ -90,21 +90,20 @@ interface Report {
   received_by?: string;
 }
 
-interface Order {
-  id: number;
-  order_number: string;
-  status: 'pending' | 'processing' | 'completed' | 'confirmed' | 'cancelled';
-  notes?: string;
-  created_at: string;
+interface BreakdownReport {
+  id: string;
+  project_name?: string;
+  pool_name?: string;
+  pool_type?: string;
+  description: string;
   technician_name?: string;
-  items?: Array<{
-    id: number;
-    quantity: number;
-    product_name: string;
-    variant_info?: string;
-    product_id?: number;
-    product_variant_id?: number;
-  }>;
+  report_date?: string;
+  report_time?: string;
+  created_at?: string;
+  photo_1_url?: string;
+  photo_2_url?: string;
+  pdf_url?: string;
+  email_sent?: boolean;
 }
 
 export default function ReportHistoryScreen() {
@@ -114,49 +113,49 @@ export default function ReportHistoryScreen() {
   const dispatch = useAppDispatch();
   
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [selectedBreakdown, setSelectedBreakdown] = useState<BreakdownReport | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
-  const [orderModalVisible, setOrderModalVisible] = useState(false);
+  const [breakdownModalVisible, setBreakdownModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [editingReport, setEditingReport] = useState<Report | null>(null);
   const [editFormData, setEditFormData] = useState<any>({});
   const [editingField, setEditingField] = useState<{key: string, label: string, value: string, type: string} | null>(null);
   const [newPhotos, setNewPhotos] = useState<{[key: string]: string}>({});
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'reports' | 'orders'>('reports');
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [loadingOrders, setLoadingOrders] = useState(false);
+  const [activeTab, setActiveTab] = useState<'reports' | 'breakdowns'>('reports');
+  const [breakdownReports, setBreakdownReports] = useState<BreakdownReport[]>([]);
+  const [loadingBreakdowns, setLoadingBreakdowns] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     dispatch(fetchUserReports({ page: 1, limit: 50 }));
-    loadOrders();
+    loadBreakdownReports();
     // Limpiar caché de PDFs antiguos al cargar la pantalla
     clearOldPdfCache();
   }, [dispatch]);
 
-  const loadOrders = async () => {
+  const loadBreakdownReports = async () => {
     if (!token) return;
     
-    setLoadingOrders(true);
+    setLoadingBreakdowns(true);
     try {
-      const response = await ApiService.getUserOrders(token, 1, 50);
+      const response = await ApiService.getMyBreakdownReports(token);
       if (response.success) {
-        setOrders(response.orders || []);
+        setBreakdownReports(response.reports || []);
       }
     } catch (error) {
-      console.error('Error loading orders:', error);
+      console.error('Error loading breakdown reports:', error);
     } finally {
-      setLoadingOrders(false);
+      setLoadingBreakdowns(false);
     }
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
     await dispatch(fetchUserReports({ page: 1, limit: 50 }));
-    await loadOrders();
+    await loadBreakdownReports();
     setRefreshing(false);
   };
 
@@ -407,43 +406,17 @@ export default function ReportHistoryScreen() {
     }
   };
 
-  const openOrderDetail = (order: Order) => {
-    setSelectedOrder(order);
-    setOrderModalVisible(true);
+  const openBreakdownDetail = (breakdown: BreakdownReport) => {
+    setSelectedBreakdown(breakdown);
+    setBreakdownModalVisible(true);
   };
 
-  const getOrderStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return '#4CAF50';
-      case 'confirmed':
-        return '#4CAF50';
-      case 'processing':
-        return '#2196F3';
-      case 'pending':
-        return '#FF9800';
-      case 'cancelled':
-        return '#f44336';
-      default:
-        return '#9E9E9E';
-    }
+  const getBreakdownStatusColor = (report: BreakdownReport) => {
+    return report.email_sent ? '#4CAF50' : '#FF9800';
   };
 
-  const getOrderStatusText = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'Completado';
-      case 'confirmed':
-        return 'Confirmado';
-      case 'processing':
-        return 'En Proceso';
-      case 'pending':
-        return 'Pendiente';
-      case 'cancelled':
-        return 'Cancelado';
-      default:
-        return 'Desconocido';
-    }
+  const getBreakdownStatusText = (report: BreakdownReport) => {
+    return report.email_sent ? 'Enviado' : 'Pendiente';
   };
 
   const formatDate = (dateString: string) => {
@@ -813,23 +786,23 @@ export default function ReportHistoryScreen() {
         </TouchableOpacity>
         
         <TouchableOpacity 
-          style={[styles.tab, activeTab === 'orders' && styles.activeTab]}
-          onPress={() => setActiveTab('orders')}
+          style={[styles.tab, activeTab === 'breakdowns' && styles.activeTab]}
+          onPress={() => setActiveTab('breakdowns')}
         >
           <Ionicons 
-            name="cart" 
+            name="warning" 
             size={20} 
-            color={activeTab === 'orders' ? Colors.primary.blue : '#666'} 
+            color={activeTab === 'breakdowns' ? Colors.primary.blue : '#666'} 
           />
-          <Text style={[styles.tabText, activeTab === 'orders' && styles.activeTabText]}>
-            Órdenes
+          <Text style={[styles.tabText, activeTab === 'breakdowns' && styles.activeTabText]}>
+            Averías
           </Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.summarySection}>
         <Text style={styles.summaryTitle}>
-          {activeTab === 'reports' ? 'Resumen de Reportes' : 'Resumen de Órdenes'}
+          {activeTab === 'reports' ? 'Resumen de Reportes' : 'Resumen de Averías'}
         </Text>
         <View style={styles.summaryGrid}>
           {activeTab === 'reports' ? (
@@ -866,23 +839,29 @@ export default function ReportHistoryScreen() {
           ) : (
             <>
               <View style={styles.summaryCard}>
-                <Ionicons name="cart" size={24} color="#1976D2" />
-                <Text style={styles.summaryNumber}>{orders.length || 0}</Text>
-                <Text style={styles.summaryLabel}>Total Órdenes</Text>
+                <Ionicons name="warning" size={24} color="#1976D2" />
+                <Text style={styles.summaryNumber}>{breakdownReports.length || 0}</Text>
+                <Text style={styles.summaryLabel}>Total Averías</Text>
               </View>
               <View style={styles.summaryCard}>
                 <Ionicons name="time" size={24} color="#FF9800" />
                 <Text style={styles.summaryNumber}>
-                  {orders.filter(o => o.status === 'pending' || o.status === 'processing').length || 0}
+                  {breakdownReports.filter((report) => {
+                    const baseDate = report.report_date
+                      ? new Date(`${report.report_date}T00:00:00`)
+                      : (report.created_at ? new Date(report.created_at) : null);
+                    if (!baseDate) return false;
+                    return baseDate.toDateString() === new Date().toDateString();
+                  }).length || 0}
                 </Text>
-                <Text style={styles.summaryLabel}>Pendientes</Text>
+                <Text style={styles.summaryLabel}>Hoy</Text>
               </View>
               <View style={styles.summaryCard}>
                 <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
                 <Text style={styles.summaryNumber}>
-                  {orders.filter(o => o.status === 'completed' || o.status === 'confirmed').length || 0}
+                  {breakdownReports.filter((report) => report.email_sent).length || 0}
                 </Text>
-                <Text style={styles.summaryLabel}>Completadas</Text>
+                <Text style={styles.summaryLabel}>Enviadas</Text>
               </View>
             </>
           )}
@@ -1027,39 +1006,41 @@ export default function ReportHistoryScreen() {
           ))
           )
         ) : (
-          loadingOrders ? (
+          loadingBreakdowns ? (
             <View style={styles.loadingContainer}>
-              <Text style={styles.loadingText}>Cargando órdenes...</Text>
+              <Text style={styles.loadingText}>Cargando averías...</Text>
             </View>
-          ) : orders.length === 0 ? (
+          ) : breakdownReports.length === 0 ? (
             <View style={styles.emptyContainer}>
-              <Ionicons name="cart-outline" size={64} color="#ccc" />
-              <Text style={styles.emptyText}>No hay órdenes</Text>
-              <Text style={styles.emptySubtext}>Crea tu primera orden desde Productos</Text>
+              <Ionicons name="warning-outline" size={64} color="#ccc" />
+              <Text style={styles.emptyText}>No hay averías registradas</Text>
+              <Text style={styles.emptySubtext}>Tus reportes de avería aparecerán aquí</Text>
             </View>
           ) : (
-            orders.map((order) => (
+            breakdownReports.map((report) => (
               <TouchableOpacity
-                key={order.id}
+                key={report.id}
                 style={styles.reportCard}
-                onPress={() => openOrderDetail(order)}
+                onPress={() => openBreakdownDetail(report)}
               >
                 <View style={styles.reportHeader}>
                   <View>
-                    <Text style={styles.reportNumber}>{order.order_number}</Text>
+                    <Text style={styles.reportNumber}>Avería #{report.id.slice(0, 8).toUpperCase()}</Text>
                     <Text style={styles.reportClient}>
-                      {order.items?.length || 0} producto(s)
+                      {report.project_name || 'Sin proyecto'}
                     </Text>
-                    <Text style={styles.reportDate}>{formatDate(order.created_at)}</Text>
+                    <Text style={styles.reportDate}>
+                      {formatDate(report.created_at || `${report.report_date || ''} ${report.report_time || ''}`)}
+                    </Text>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: getOrderStatusColor(order.status) }]}>
-                    <Text style={styles.statusText}>{getOrderStatusText(order.status)}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getBreakdownStatusColor(report) }]}> 
+                    <Text style={styles.statusText}>{getBreakdownStatusText(report)}</Text>
                   </View>
                 </View>
                 <View style={styles.reportFooter}>
                   <View>
                     <Text style={styles.reportLocation}>
-                      {order.technician_name || 'Técnico'}
+                      {report.pool_name || 'Sin área'}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color="#666" />
@@ -1073,16 +1054,16 @@ export default function ReportHistoryScreen() {
       <Modal
         animationType="slide"
         transparent={false}
-        visible={orderModalVisible}
-        onRequestClose={() => setOrderModalVisible(false)}
+        visible={breakdownModalVisible}
+        onRequestClose={() => setBreakdownModalVisible(false)}
       >
-        {selectedOrder && (
+        {selectedBreakdown && (
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <TouchableOpacity onPress={() => setOrderModalVisible(false)} style={styles.closeButton}>
+              <TouchableOpacity onPress={() => setBreakdownModalVisible(false)} style={styles.closeButton}>
                 <Ionicons name="close" size={24} color="white" />
               </TouchableOpacity>
-              <Text style={styles.modalTitle}>Detalle de la Orden</Text>
+              <Text style={styles.modalTitle}>Detalle de Avería</Text>
               <View style={styles.placeholder} />
             </View>
 
@@ -1090,47 +1071,88 @@ export default function ReportHistoryScreen() {
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>Información General</Text>
                 <View style={styles.infoGrid}>
-                  <Text style={styles.infoLabel}>Número de Orden:</Text>
-                  <Text style={styles.infoValue}>{selectedOrder.order_number}</Text>
+                  <Text style={styles.infoLabel}>ID de Reporte:</Text>
+                  <Text style={styles.infoValue}>#{selectedBreakdown.id.slice(0, 8).toUpperCase()}</Text>
                   
+                  <Text style={styles.infoLabel}>Proyecto:</Text>
+                  <Text style={styles.infoValue}>{selectedBreakdown.project_name || 'N/A'}</Text>
+
+                  <Text style={styles.infoLabel}>Área:</Text>
+                  <Text style={styles.infoValue}>{selectedBreakdown.pool_name || 'N/A'}</Text>
+
+                  <Text style={styles.infoLabel}>Técnico:</Text>
+                  <Text style={styles.infoValue}>{selectedBreakdown.technician_name || 'N/A'}</Text>
+
                   <Text style={styles.infoLabel}>Estado:</Text>
-                  <View style={[styles.statusBadge, { backgroundColor: getOrderStatusColor(selectedOrder.status) }]}>
-                    <Text style={styles.statusText}>{getOrderStatusText(selectedOrder.status)}</Text>
+                  <View style={[styles.statusBadge, { backgroundColor: getBreakdownStatusColor(selectedBreakdown) }]}> 
+                    <Text style={styles.statusText}>{getBreakdownStatusText(selectedBreakdown)}</Text>
                   </View>
                   
                   <Text style={styles.infoLabel}>Fecha:</Text>
-                  <Text style={styles.infoValue}>{formatDate(selectedOrder.created_at)}</Text>
-                  
-                  {selectedOrder.technician_name && (
-                    <>
-                      <Text style={styles.infoLabel}>Técnico:</Text>
-                      <Text style={styles.infoValue}>{selectedOrder.technician_name}</Text>
-                    </>
-                  )}
-                  
-                  {selectedOrder.notes && (
-                    <>
-                      <Text style={styles.infoLabel}>Notas:</Text>
-                      <Text style={styles.infoValue}>{selectedOrder.notes}</Text>
-                    </>
-                  )}
+                  <Text style={styles.infoValue}>
+                    {formatDate(selectedBreakdown.created_at || `${selectedBreakdown.report_date || ''} ${selectedBreakdown.report_time || ''}`)}
+                  </Text>
                 </View>
               </View>
 
-              {selectedOrder.items && selectedOrder.items.length > 0 && (
-                <View style={styles.modalSection}>
-                  <Text style={styles.modalSectionTitle}>Productos</Text>
-                  {selectedOrder.items.map((item, index) => (
-                    <View key={index} style={styles.orderItem}>
-                      <View style={styles.orderItemInfo}>
-                        <Text style={styles.orderItemName}>{item.product_name}</Text>
-                        <Text style={styles.orderItemDetails}>
-                          {item.variant_info && `${item.variant_info} · `}
-                          Cantidad: {item.quantity}
-                        </Text>
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Descripción</Text>
+                <View style={styles.additionalInfo}>
+                  <Text style={styles.additionalValue}>{selectedBreakdown.description || 'Sin descripción'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>Evidencia Fotográfica</Text>
+                <View style={styles.photosGrid}>
+                  <View style={styles.photoContainer}>
+                    <Text style={styles.photoTitle}>Foto 1</Text>
+                    {isValidImageUrl(selectedBreakdown.photo_1_url) ? (
+                      <Image
+                        source={{ uri: getCompleteImageUrl(selectedBreakdown.photo_1_url) || undefined }}
+                        style={styles.modalPhoto}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.noPhotoContainer}>
+                        <Ionicons name="camera-outline" size={48} color="#ccc" />
+                        <Text style={styles.noPhotoText}>Sin foto disponible</Text>
                       </View>
-                    </View>
-                  ))}
+                    )}
+                  </View>
+
+                  <View style={styles.photoContainer}>
+                    <Text style={styles.photoTitle}>Foto 2</Text>
+                    {isValidImageUrl(selectedBreakdown.photo_2_url) ? (
+                      <Image
+                        source={{ uri: getCompleteImageUrl(selectedBreakdown.photo_2_url) || undefined }}
+                        style={styles.modalPhoto}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={styles.noPhotoContainer}>
+                        <Ionicons name="camera-outline" size={48} color="#ccc" />
+                        <Text style={styles.noPhotoText}>Sin foto disponible</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              </View>
+
+              {selectedBreakdown.pdf_url && (
+                <View style={styles.modalSection}>
+                  <TouchableOpacity
+                    style={styles.previewButton}
+                    onPress={() => {
+                      const pdfUrl = getCompleteImageUrl(selectedBreakdown.pdf_url);
+                      if (pdfUrl) {
+                        Linking.openURL(pdfUrl);
+                      }
+                    }}
+                  >
+                    <Ionicons name="download-outline" size={18} color="#FFFFFF" />
+                    <Text style={styles.previewButtonText}>Abrir PDF</Text>
+                  </TouchableOpacity>
                 </View>
               )}
             </ScrollView>

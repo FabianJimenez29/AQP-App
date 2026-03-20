@@ -451,6 +451,38 @@ class ApiService {
     });
   }
 
+  async createBreakdownReport(
+    data: {
+      projectId: string;
+      projectPoolId: number;
+      description: string;
+      photo1Url: string;
+      photo2Url: string;
+      createdAt?: string;
+    },
+    token: string
+  ): Promise<any> {
+    const validToken = this.validateToken(token);
+    return this.request('/breakdown-reports', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${validToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+  }
+
+  async getMyBreakdownReports(token: string): Promise<any> {
+    const validToken = this.validateToken(token);
+    return this.request('/breakdown-reports/my', {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${validToken}`,
+      },
+    });
+  }
+
   async getAppVersion(): Promise<{
     success: boolean;
     version: string;
