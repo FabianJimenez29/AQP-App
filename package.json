@@ -13,6 +13,9 @@
     "clear": "rm -rf .expo node_modules/.cache && expo start --clear",
     "build:preview": "npx eas-cli build --platform android --profile preview",
     "build:production": "npx eas-cli build --platform android --profile production",
+    "build:ios:production": "npx eas-cli build --platform ios --profile production",
+    "submit:ios:production": "npx eas-cli submit --platform ios --profile production --latest",
+    "release:ios": "npm run build:ios:production && npm run submit:ios:production",
     "build:local": "npx expo prebuild --platform android && cd android && ./gradlew assembleRelease",
     "app:bump": "node ./scripts/app-bump-version.js",
     "app:update-backend": "node ./scripts/app-update-backend.js"
