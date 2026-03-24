@@ -176,6 +176,11 @@ export default function BreakdownReportScreen() {
         createdAt: new Date().toISOString(),
         photo1Local: photo1,
         photo2Local: photo2,
+        clientPhone:
+          selectedProject.project_client_phone ||
+          selectedProject.client_phone ||
+          selectedProject.phone ||
+          null,
       },
     });
   };

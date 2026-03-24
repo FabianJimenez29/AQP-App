@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Platform,
   SafeAreaView,
   StyleSheet,
@@ -116,6 +117,32 @@ export default function BreakdownPreviewScreen({ route, navigation }: BreakdownP
     return `REPORTE AVERIA-${safeProjectName || 'PROYECTO'}-${paddedSequence}`;
   };
 
+  const normalizePhone = (phone?: string | null) => {
+    if (!phone) return '';
+    const digits = String(phone).replace(/\D/g, '');
+    if (!digits) return '';
+    if (digits.startsWith('506')) return digits;
+    return `506${digits}`;
+  };
+
+  const openWhatsAppFallback = async (pdfUrl: string, reportSequence?: number) => {
+    const fallbackName = buildFallbackBreakdownFileName(reportData.projectName, reportSequence);
+    const message = `Hola, comparto el reporte de averia ${fallbackName}. PDF: ${pdfUrl}`;
+    const encodedMessage = encodeURIComponent(message);
+    const phone = normalizePhone(reportData?.clientPhone || null);
+
+    const whatsappUrl = phone
+      ? `whatsapp://send?phone=${phone}&text=${encodedMessage}`
+      : `whatsapp://send?text=${encodedMessage}`;
+
+    const canOpen = await Linking.canOpenURL(whatsappUrl);
+    if (!canOpen) {
+      throw new Error('No se pudo abrir WhatsApp en este dispositivo.');
+    }
+
+    await Linking.openURL(whatsappUrl);
+  };
+
   const handleSendReport = async () => {
     if (!token) {
       Alert.alert('Sesion invalida', 'Vuelve a iniciar sesion para enviar el reporte.');
@@ -155,37 +182,42 @@ export default function BreakdownPreviewScreen({ route, navigation }: BreakdownP
         }
       }
 
-      Alert.alert(
-        'Reporte enviado',
-        downloadedPdfPath
-          ? created?.message || 'El reporte de averia fue guardado y procesado en el servidor. Se descargo el mismo PDF del correo para compartir por WhatsApp.'
-          : created?.message || 'El reporte de averia fue guardado y procesado en el servidor. No se pudo descargar el PDF para WhatsApp.',
-        downloadedPdfPath
-          ? [
-              {
-                text: 'Compartir por WhatsApp',
-                onPress: async () => {
-                  try {
-                    await sharePDF(downloadedPdfPath!);
-                  } catch (error: any) {
-                    Alert.alert('Error', error?.message || 'No se pudo compartir el PDF por WhatsApp.');
-                  } finally {
-                    navigation.navigate('Dashboard');
-                  }
-                },
-              },
-              {
-                text: 'Listo',
-                onPress: () => navigation.navigate('Dashboard'),
-              },
-            ]
-          : [
-              {
-                text: 'OK',
-                onPress: () => navigation.navigate('Dashboard'),
-              },
-            ]
-      );
+      if (downloadedPdfPath) {
+        try {
+          await sharePDF(downloadedPdfPath);
+          Alert.alert(
+            'Reporte enviado',
+            created?.message || 'El reporte se guardo, se genero el PDF del servidor y se abrio el menu para compartir.'
+          );
+        } catch (shareError: any) {
+          if (absolutePdfUrl) {
+            await openWhatsAppFallback(absolutePdfUrl, created?.reportSequence);
+            Alert.alert(
+              'Reporte enviado',
+              'El reporte se guardo. Se abrio WhatsApp con el enlace oficial del PDF del servidor.'
+            );
+          } else {
+            throw new Error(shareError?.message || 'No se pudo compartir el PDF.');
+          }
+        }
+        navigation.navigate('Dashboard');
+        return;
+      }
+
+      if (absolutePdfUrl) {
+        await openWhatsAppFallback(absolutePdfUrl, created?.reportSequence);
+        Alert.alert(
+          'Reporte enviado',
+          'El reporte se guardo y se abrio WhatsApp con el enlace oficial del PDF del servidor.'
+        );
+      } else {
+        Alert.alert(
+          'Reporte enviado',
+          created?.message || 'El reporte fue guardado, pero el servidor no devolvio un PDF para compartir.'
+        );
+      }
+
+      navigation.navigate('Dashboard');
     } catch (error: any) {
       Alert.alert('Error', error?.message || 'No se pudo enviar el reporte de averia.');
     } finally {
@@ -221,7 +253,7 @@ export default function BreakdownPreviewScreen({ route, navigation }: BreakdownP
           onPress={handleSendReport}
         >
           {isSending ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="send" size={18} color="white" />}
-          <Text style={styles.primaryText}>Enviar reporte</Text>
+          <Text style={styles.primaryText}>Enviar y compartir</Text>
         </TouchableOpacity>
       </View>
 
