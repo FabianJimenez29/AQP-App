@@ -118,6 +118,31 @@ export const sharePDF = async (filePath: string): Promise<void> => {
 };
 
 /**
+ * Descarga un PDF remoto al almacenamiento local del dispositivo
+ * @param fileUrl - URL absoluta del PDF
+ * @param fileName - Nombre base del archivo (opcional)
+ */
+export const downloadPDF = async (fileUrl: string, fileName?: string): Promise<string> => {
+  try {
+    if (!fileUrl) {
+      throw new Error('URL de PDF inválida');
+    }
+
+    const baseName = (fileName || `reporte_${Date.now()}`)
+      .replace(/\.pdf$/i, '')
+      .replace(/[/\\?%*:|"<>]/g, '_');
+
+    const targetPath = `${FileSystem.documentDirectory}${baseName}.pdf`;
+    const downloadResult = await FileSystem.downloadAsync(fileUrl, targetPath);
+
+    return downloadResult.uri;
+  } catch (error) {
+    console.error('❌ Error descargando PDF remoto:', error);
+    throw new Error('No se pudo descargar el PDF del servidor');
+  }
+};
+
+/**
  * Elimina un PDF del dispositivo
  * @param filePath - Ruta del archivo PDF
  */

@@ -12,8 +12,8 @@ import {
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSelector } from '../store/hooks';
-import ApiService from '../services/api';
-import { convertImageToBase64, generatePDF, generateFileName, sharePDF } from '../utils/pdfGenerator';
+import ApiService, { getImageUrl } from '../services/api';
+import { convertImageToBase64, downloadPDF, sharePDF } from '../utils/pdfGenerator';
 
 interface BreakdownPreviewScreenProps {
   route: any;
@@ -28,8 +28,6 @@ export default function BreakdownPreviewScreen({ route, navigation }: BreakdownP
   const [photo2Base64, setPhoto2Base64] = useState<string | null>(null);
   const [preparing, setPreparing] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [isSharingPdf, setIsSharingPdf] = useState(false);
   const [pdfPath, setPdfPath] = useState<string | null>(null);
 
   useEffect(() => {
@@ -96,27 +94,26 @@ export default function BreakdownPreviewScreen({ route, navigation }: BreakdownP
       </div>
 
       <div class="warning">
-        Esta vista previa se utiliza para generar el PDF local y compartirlo por WhatsApp.
+        Esta vista previa es referencial. El PDF que se comparte por WhatsApp es el mismo generado por el servidor.
       </div>
     </body>
     </html>
     `;
   }, [reportData, photo1Base64, photo2Base64]);
 
-  const ensureLocalPdf = async (): Promise<string> => {
-    if (pdfPath) {
-      return pdfPath;
-    }
+  const buildFallbackBreakdownFileName = (projectName?: string, reportSequence?: number) => {
+    const safeProjectName = String(projectName || 'PROYECTO')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .toUpperCase();
 
-    setIsGeneratingPdf(true);
-    try {
-      const fileName = generateFileName(`averia_${Date.now()}`, reportData.projectName || 'Proyecto');
-      const localPdfPath = await generatePDF(htmlContent, fileName);
-      setPdfPath(localPdfPath);
-      return localPdfPath;
-    } finally {
-      setIsGeneratingPdf(false);
-    }
+    const parsedSequence = Number.isFinite(Number(reportSequence)) ? Number(reportSequence) : 0;
+    const paddedSequence = String(Math.max(0, parsedSequence)).padStart(3, '0');
+
+    return `REPORTE AVERIA-${safeProjectName || 'PROYECTO'}-${paddedSequence}`;
   };
 
   const handleSendReport = async () => {
@@ -127,14 +124,6 @@ export default function BreakdownPreviewScreen({ route, navigation }: BreakdownP
 
     try {
       setIsSending(true);
-
-      // Se genera una copia local del PDF en el mismo flujo de envio.
-      let localPdfPath: string | null = pdfPath;
-      try {
-        localPdfPath = await ensureLocalPdf();
-      } catch (pdfError) {
-        console.warn('No se pudo generar PDF local durante el envio:', pdfError);
-      }
 
       const [upload1, upload2] = await Promise.all([
         ApiService.uploadImage(reportData.photo1Local, token, `breakdown_${Date.now()}_1`),
@@ -153,23 +142,34 @@ export default function BreakdownPreviewScreen({ route, navigation }: BreakdownP
         token
       );
 
+      let downloadedPdfPath: string | null = null;
+      const absolutePdfUrl = getImageUrl(created?.pdfUrl || null);
+      if (absolutePdfUrl) {
+        try {
+          const pdfNameFromServer = String(created?.pdfFileName || '').replace(/\.pdf$/i, '');
+          const fallbackPdfName = buildFallbackBreakdownFileName(reportData.projectName, created?.reportSequence);
+          downloadedPdfPath = await downloadPDF(absolutePdfUrl, pdfNameFromServer || fallbackPdfName);
+          setPdfPath(downloadedPdfPath);
+        } catch (downloadError) {
+          console.warn('No se pudo descargar el PDF del servidor para compartir:', downloadError);
+        }
+      }
+
       Alert.alert(
         'Reporte enviado',
-        localPdfPath
-          ? created?.message || 'El reporte de averia fue guardado y procesado en el servidor. Tambien se genero una copia local para compartir por WhatsApp.'
-          : created?.message || 'El reporte de averia fue guardado y procesado en el servidor. No se pudo generar la copia local para WhatsApp.',
-        localPdfPath
+        downloadedPdfPath
+          ? created?.message || 'El reporte de averia fue guardado y procesado en el servidor. Se descargo el mismo PDF del correo para compartir por WhatsApp.'
+          : created?.message || 'El reporte de averia fue guardado y procesado en el servidor. No se pudo descargar el PDF para WhatsApp.',
+        downloadedPdfPath
           ? [
               {
                 text: 'Compartir por WhatsApp',
                 onPress: async () => {
                   try {
-                    setIsSharingPdf(true);
-                    await sharePDF(localPdfPath!);
+                    await sharePDF(downloadedPdfPath!);
                   } catch (error: any) {
                     Alert.alert('Error', error?.message || 'No se pudo compartir el PDF por WhatsApp.');
                   } finally {
-                    setIsSharingPdf(false);
                     navigation.navigate('Dashboard');
                   }
                 },
@@ -216,11 +216,11 @@ export default function BreakdownPreviewScreen({ route, navigation }: BreakdownP
 
       <View style={styles.actions}>
         <TouchableOpacity
-          style={[styles.primaryButton, (isSending || isGeneratingPdf || preparing) && styles.disabledButton]}
-          disabled={isSending || isGeneratingPdf || preparing}
+          style={[styles.primaryButton, (isSending || preparing) && styles.disabledButton]}
+          disabled={isSending || preparing}
           onPress={handleSendReport}
         >
-          {isSending || isGeneratingPdf ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="send" size={18} color="white" />}
+          {isSending ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="send" size={18} color="white" />}
           <Text style={styles.primaryText}>Enviar reporte</Text>
         </TouchableOpacity>
       </View>
