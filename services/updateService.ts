@@ -12,7 +12,7 @@ interface UpdateInfo {
 }
 
 class UpdateService {
-  private currentVersion = Constants.expoConfig?.version || '1.0.17'; 
+  private currentVersion = Constants.expoConfig?.version || '1.0.30'; 
   private checkInterval: NodeJS.Timeout | null = null;
   private isUpdating = false;
 
