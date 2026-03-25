@@ -1,8 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Linking,
+  Image,
   Platform,
   SafeAreaView,
   StyleSheet,
@@ -13,144 +13,207 @@ import {
 import { WebView } from 'react-native-webview';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSelector } from '../store/hooks';
-import ApiService, { getImageUrl } from '../services/api';
-import { convertImageToBase64, downloadPDF, sharePDF } from '../utils/pdfGenerator';
+import ApiService from '../services/api';
+import { convertImageToBase64, generatePDF, sharePDF } from '../utils/pdfGenerator';
+import * as FileSystem from 'expo-file-system/legacy';
 
 interface BreakdownPreviewScreenProps {
   route: any;
   navigation: any;
 }
 
-export default function BreakdownPreviewScreen({ route, navigation }: BreakdownPreviewScreenProps) {
+const escapeHtml = (value: string = '') =>
+  String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+
+const buildBreakdownHTML = (reportData: any, photo1Base64: string | null, photo2Base64: string | null, logoBase64: string | null) => {
+  const createdAtDate = reportData?.createdAt ? new Date(reportData.createdAt) : new Date();
+  const dateText = createdAtDate.toLocaleDateString('es-CR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const timeText = createdAtDate.toLocaleTimeString('es-CR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+
+  return `
+  <!DOCTYPE html>
+  <html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { font-family: Arial, sans-serif; color: #1f2937; background: #ffffff; line-height: 1.5; }
+      table { width: 100%; border-collapse: collapse; }
+    </style>
+  </head>
+  <body>
+    <!-- HEADER BLANCO CON LOGO Y TEXTO NEGRO -->
+    <div style="background-color: white; color: black; padding: 20px; text-align: center; margin-bottom: 0; border-bottom: 2px solid #1e40af;">
+      ${logoBase64 ? `<img src="${logoBase64}" alt="Logo AQP" style="width: 200px; height: auto; max-width: 100%; margin: 0 auto 12px auto; display: block;" />` : ''}
+      <h1 style="font-size: 28px; font-weight: 800; margin: 0; letter-spacing: -0.5px; color: black;">Reporte de Avería</h1>
+      <p style="font-size: 14px; margin-top: 6px; font-weight: 500; color: black; opacity: 0.85;">🔧 Documento técnico de mantenimiento</p>
+    </div>
+
+    <!-- CONTENIDO BLANCO -->
+    <div style="background: white; padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
+      
+      <!-- INFO GRID -->
+      <table style="margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #f0f0f0;">
+        <tr>
+          <td style="width: 50%; padding-right: 10px;">
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #1e40af; letter-spacing: 0.3px; margin-bottom: 4px;">Proyecto</div>
+            <div style="font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 16px;">${escapeHtml(reportData?.projectName || '—')}</div>
+            
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #1e40af; letter-spacing: 0.3px; margin-bottom: 4px;">Técnico Responsable</div>
+            <div style="font-size: 14px; font-weight: 700; color: #1f2937;">${escapeHtml(reportData?.technicianName || '—')}</div>
+          </td>
+          <td style="width: 50%; padding-left: 10px;">
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #1e40af; letter-spacing: 0.3px; margin-bottom: 4px;">Área / Elemento</div>
+            <div style="font-size: 14px; font-weight: 700; color: #1f2937; margin-bottom: 16px;">${escapeHtml(reportData?.poolName || '—')}</div>
+            
+            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #1e40af; letter-spacing: 0.3px; margin-bottom: 4px;">Fecha y Hora</div>
+            <div style="font-size: 14px; font-weight: 700; color: #1f2937;">${escapeHtml(dateText)} • ${escapeHtml(timeText)}</div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- DESCRIPCIÓN -->
+      <div style="margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid #f0f0f0;">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #1e40af; letter-spacing: 0.3px; margin-bottom: 8px;">Descripción de la Avería</div>
+        <div style="font-size: 14px; line-height: 1.65; color: #1f2937; white-space: pre-wrap; word-wrap: break-word; padding: 12px; background-color: #EFF6FF; border-left: 4px solid #1e40af; border-radius: 4px;">${escapeHtml(reportData?.description || '—')}</div>
+      </div>
+
+      <!-- FOTOS -->
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #1e40af; letter-spacing: 0.3px; margin-bottom: 12px;">Evidencia Fotográfica</div>
+        <table style="width: 100%;">
+          <tr>
+            <td style="width: 48%; padding-right: 12px;">
+              <img src="${photo1Base64 || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22250%22 height=%22250%22%3E%3Crect fill=%22%23f3f4f6%22 width=%22250%22 height=%22250%22/%3E%3C/svg%3E'}" alt="Fotografía 1" style="width: 100%; height: 250px; object-fit: cover; border-radius: 6px; border: 2px solid #1e40af; background: #f9fafb; display: block;" />
+              <div style="font-size: 12px; font-weight: 700; color: #1e40af; margin-top: 6px; text-align: center;">Fotografía 1</div>
+            </td>
+            <td style="width: 48%; padding-left: 12px;">
+              <img src="${photo2Base64 || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22250%22 height=%22250%22%3E%3Crect fill=%22%23f3f4f6%22 width=%22250%22 height=%22250%22/%3E%3C/svg%3E'}" alt="Fotografía 2" style="width: 100%; height: 250px; object-fit: cover; border-radius: 6px; border: 2px solid #1e40af; background: #f9fafb; display: block;" />
+              <div style="font-size: 12px; font-weight: 700; color: #1e40af; margin-top: 6px; text-align: center;">Fotografía 2</div>
+            </td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- FOOTER -->
+      <div style="margin-top: 16px; padding-top: 12px; border-top: 1px solid #f0f0f0; font-size: 11px; color: #9ca3af; text-align: center;">
+        Reporte generado automáticamente • Sistema Aqua Pool Blue CR
+      </div>
+    </div>
+  </body>
+  </html>
+  `;
+};
+
+const buildFallbackBreakdownFileName = (projectName?: string, reportSequence?: number) => {
+  const safeProjectName = String(projectName || 'PROYECTO')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]+/g, '')
+    .toUpperCase();
+
+  const parsedSequence = Number.isFinite(Number(reportSequence)) ? Number(reportSequence) : 0;
+  const paddedSequence = String(Math.max(0, parsedSequence)).padStart(3, '0');
+
+  return `RA-${safeProjectName || 'PROYECTO'}-${paddedSequence}`;
+};
+
+const BreakdownPreviewScreen: React.FC<BreakdownPreviewScreenProps> = ({ route, navigation }) => {
   const { reportData } = route.params;
   const { token } = useAppSelector((state) => state.auth);
-
   const [photo1Base64, setPhoto1Base64] = useState<string | null>(null);
   const [photo2Base64, setPhoto2Base64] = useState<string | null>(null);
-  const [preparing, setPreparing] = useState(true);
-  const [isSending, setIsSending] = useState(false);
+  const [logoBase64, setLogoBase64] = useState<string | null>(null);
+  const [htmlReady, setHtmlReady] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [pdfPath, setPdfPath] = useState<string | null>(null);
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const webViewRef = useRef<any>(null);
 
   useEffect(() => {
     const preparePreview = async () => {
       try {
-        setPreparing(true);
+        setHtmlReady(false);
         const [p1, p2] = await Promise.all([
           convertImageToBase64(reportData.photo1Local),
           convertImageToBase64(reportData.photo2Local),
         ]);
+        
+        let logo = null;
+        try {
+          const logoSource = require('../assets/images/AQPLogoBlack.png');
+          const logoUri = Image.resolveAssetSource(logoSource).uri;
+          logo = await convertImageToBase64(logoUri);
+        } catch (logoError) {
+          console.warn('⚠️ No se pudo cargar el logo:', logoError);
+        }
+        
         setPhoto1Base64(p1);
         setPhoto2Base64(p2);
+        setLogoBase64(logo);
       } catch (error) {
+        console.error('Error preparando vista previa:', error);
         Alert.alert('Error', 'No se pudo preparar la vista previa.');
       } finally {
-        setPreparing(false);
+        setHtmlReady(true);
       }
     };
 
     preparePreview();
   }, [reportData]);
 
-  const htmlContent = useMemo(() => {
-    const createdAt = new Date(reportData.createdAt);
-    const dateText = createdAt.toLocaleDateString('es-CR');
-    const timeText = createdAt.toLocaleTimeString('es-CR');
+  const htmlContent = htmlReady ? buildBreakdownHTML(reportData, photo1Base64, photo2Base64, logoBase64) : '';
 
-    return `
-    <!DOCTYPE html>
-    <html lang="es">
-    <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <style>
-        body { font-family: Arial, sans-serif; margin: 18px; color: #111827; }
-        h1 { font-size: 24px; margin-bottom: 8px; color: #0c4a6e; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-        .box { border: 1px solid #d1d5db; border-radius: 8px; padding: 10px; }
-        .label { font-size: 11px; color: #6b7280; text-transform: uppercase; }
-        .value { font-size: 14px; font-weight: 700; margin-top: 4px; }
-        .desc { border: 1px solid #d1d5db; border-radius: 8px; padding: 12px; margin-bottom: 14px; }
-        .photos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .photo { width: 100%; height: 220px; object-fit: cover; border: 1px solid #d1d5db; border-radius: 8px; }
-        .warning { margin-top: 12px; background: #fef3c7; color: #92400e; border-radius: 8px; padding: 10px; font-size: 12px; }
-      </style>
-    </head>
-    <body>
-      <h1>Reporte de Averia</h1>
-      <div class="grid">
-        <div class="box"><div class="label">Proyecto</div><div class="value">${reportData.projectName}</div></div>
-        <div class="box"><div class="label">Area</div><div class="value">${reportData.poolName}</div></div>
-        <div class="box"><div class="label">Tecnico</div><div class="value">${reportData.technicianName}</div></div>
-        <div class="box"><div class="label">Fecha y hora</div><div class="value">${dateText} ${timeText}</div></div>
-      </div>
+  const handleGeneratePDF = async () => {
+    if (!htmlReady) return;
 
-      <div class="desc">
-        <div class="label">Descripcion de la averia</div>
-        <div class="value">${String(reportData.description || '').replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-      </div>
-
-      <div class="photos">
-        <img class="photo" src="${photo1Base64 || ''}" alt="Foto 1" />
-        <img class="photo" src="${photo2Base64 || ''}" alt="Foto 2" />
-      </div>
-
-      <div class="warning">
-        Esta vista previa es referencial. El PDF que se comparte por WhatsApp es el mismo generado por el servidor.
-      </div>
-    </body>
-    </html>
-    `;
-  }, [reportData, photo1Base64, photo2Base64]);
-
-  const buildFallbackBreakdownFileName = (projectName?: string, reportSequence?: number) => {
-    const safeProjectName = String(projectName || 'PROYECTO')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-zA-Z0-9]+/g, '-')
-      .replace(/-+/g, '-')
-      .replace(/^-|-$/g, '')
-      .toUpperCase();
-
-    const parsedSequence = Number.isFinite(Number(reportSequence)) ? Number(reportSequence) : 0;
-    const paddedSequence = String(Math.max(0, parsedSequence)).padStart(3, '0');
-
-    return `REPORTE AVERIA-${safeProjectName || 'PROYECTO'}-${paddedSequence}`;
-  };
-
-  const normalizePhone = (phone?: string | null) => {
-    if (!phone) return '';
-    const digits = String(phone).replace(/\D/g, '');
-    if (!digits) return '';
-    if (digits.startsWith('506')) return digits;
-    return `506${digits}`;
-  };
-
-  const openWhatsAppFallback = async (pdfUrl: string, reportSequence?: number) => {
-    const fallbackName = buildFallbackBreakdownFileName(reportData.projectName, reportSequence);
-    const message = `Hola, comparto el reporte de averia ${fallbackName}. PDF: ${pdfUrl}`;
-    const encodedMessage = encodeURIComponent(message);
-    const phone = normalizePhone(reportData?.clientPhone || null);
-
-    const whatsappUrl = phone
-      ? `whatsapp://send?phone=${phone}&text=${encodedMessage}`
-      : `whatsapp://send?text=${encodedMessage}`;
-
-    const canOpen = await Linking.canOpenURL(whatsappUrl);
-    if (!canOpen) {
-      throw new Error('No se pudo abrir WhatsApp en este dispositivo.');
+    setLoading(true);
+    try {
+      const fileName = buildFallbackBreakdownFileName(reportData.projectName);
+      const filePath = await generatePDF(htmlContent, fileName);
+      setPdfPath(filePath);
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'No se pudo generar el PDF. Intenta nuevamente.');
+    } finally {
+      setLoading(false);
     }
-
-    await Linking.openURL(whatsappUrl);
   };
 
-  const handleSendReport = async () => {
+  const handleSharePDF = async () => {
     if (!token) {
       Alert.alert('Sesion invalida', 'Vuelve a iniciar sesion para enviar el reporte.');
       return;
     }
 
+    setSharing(true);
     try {
-      setIsSending(true);
+      setIsSubmittingReport(true);
+
+      let localPdfPath = pdfPath;
+      if (!localPdfPath) {
+        const fileName = buildFallbackBreakdownFileName(reportData.projectName);
+        localPdfPath = await generatePDF(htmlContent, fileName);
+        setPdfPath(localPdfPath);
+      }
+
+      const localPdfBase64 = await FileSystem.readAsStringAsync(localPdfPath, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
 
       const [upload1, upload2] = await Promise.all([
         ApiService.uploadImage(reportData.photo1Local, token, `breakdown_${Date.now()}_1`),
@@ -165,176 +228,219 @@ export default function BreakdownPreviewScreen({ route, navigation }: BreakdownP
           photo1Url: upload1.url,
           photo2Url: upload2.url,
           createdAt: reportData.createdAt,
+          localPdfBase64,
+          localPdfFileName: `${buildFallbackBreakdownFileName(reportData.projectName)}.pdf`,
         },
         token
       );
 
-      let downloadedPdfPath: string | null = null;
-      const absolutePdfUrl = getImageUrl(created?.pdfUrl || null);
-      if (absolutePdfUrl) {
-        try {
-          const pdfNameFromServer = String(created?.pdfFileName || '').replace(/\.pdf$/i, '');
-          const fallbackPdfName = buildFallbackBreakdownFileName(reportData.projectName, created?.reportSequence);
-          downloadedPdfPath = await downloadPDF(absolutePdfUrl, pdfNameFromServer || fallbackPdfName);
-          setPdfPath(downloadedPdfPath);
-        } catch (downloadError) {
-          console.warn('No se pudo descargar el PDF del servidor para compartir:', downloadError);
-        }
-      }
+      // Compartir siempre el PDF local generado desde la vista previa.
+      await sharePDF(localPdfPath);
 
-      if (downloadedPdfPath) {
-        try {
-          await sharePDF(downloadedPdfPath);
-          Alert.alert(
-            'Reporte enviado',
-            created?.message || 'El reporte se guardo, se genero el PDF del servidor y se abrio el menu para compartir.'
-          );
-        } catch (shareError: any) {
-          if (absolutePdfUrl) {
-            await openWhatsAppFallback(absolutePdfUrl, created?.reportSequence);
-            Alert.alert(
-              'Reporte enviado',
-              'El reporte se guardo. Se abrio WhatsApp con el enlace oficial del PDF del servidor.'
-            );
-          } else {
-            throw new Error(shareError?.message || 'No se pudo compartir el PDF.');
-          }
-        }
-        navigation.navigate('Dashboard');
-        return;
-      }
-
-      if (absolutePdfUrl) {
-        await openWhatsAppFallback(absolutePdfUrl, created?.reportSequence);
-        Alert.alert(
-          'Reporte enviado',
-          'El reporte se guardo y se abrio WhatsApp con el enlace oficial del PDF del servidor.'
-        );
-      } else {
-        Alert.alert(
-          'Reporte enviado',
-          created?.message || 'El reporte fue guardado, pero el servidor no devolvio un PDF para compartir.'
-        );
-      }
-
+      Alert.alert('Reporte enviado', created?.message || 'El reporte de averia fue enviado correctamente.');
       navigation.navigate('Dashboard');
     } catch (error: any) {
-      Alert.alert('Error', error?.message || 'No se pudo enviar el reporte de averia.');
+      Alert.alert('Error', error?.message || 'No se pudo compartir el reporte de averia.');
     } finally {
-      setIsSending(false);
+      setIsSubmittingReport(false);
+      setSharing(false);
     }
+  };
+
+  const handleFinish = () => {
+    Alert.alert('Finalizar', '¿Deseas cerrar la vista previa y volver al inicio?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Finalizar',
+        onPress: () => navigation.navigate('Dashboard'),
+      },
+    ]);
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.iconButton} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color="#111827" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Vista Previa del Reporte</Text>
-        <View style={styles.iconButton} />
+        <View style={styles.headerContent}>
+          <TouchableOpacity style={styles.closeButton} onPress={handleFinish}>
+            <Ionicons name="close-outline" size={28} color="#060606" />
+          </TouchableOpacity>
+
+          <View style={styles.headerTitleContainer}>
+            <Ionicons name="warning-outline" size={24} color="#1976D2" style={styles.headerIcon} />
+            <Text style={styles.headerTitle}>Vista Previa del Reporte</Text>
+          </View>
+
+          <View style={styles.headerPlaceholder} />
+        </View>
       </View>
 
-      <View style={styles.previewWrap}>
-        {preparing ? (
-          <View style={styles.centered}>
-            <ActivityIndicator size="large" color="#0ea5e9" />
-            <Text style={styles.loadingText}>Preparando visualizador...</Text>
+      <View style={styles.previewContainer}>
+        {!htmlReady ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#0066cc" />
+            <Text style={styles.loadingText}>Preparando vista previa...</Text>
           </View>
         ) : (
-          <WebView source={{ html: htmlContent }} originWhitelist={['*']} style={styles.webview} />
+          <WebView
+            ref={webViewRef}
+            source={{ html: htmlContent }}
+            style={styles.webview}
+            originWhitelist={['*']}
+            scalesPageToFit
+            showsVerticalScrollIndicator
+          />
         )}
       </View>
 
-      <View style={styles.actions}>
-        <TouchableOpacity
-          style={[styles.primaryButton, (isSending || preparing) && styles.disabledButton]}
-          disabled={isSending || preparing}
-          onPress={handleSendReport}
-        >
-          {isSending ? <ActivityIndicator size="small" color="white" /> : <Ionicons name="send" size={18} color="white" />}
-          <Text style={styles.primaryText}>Enviar y compartir</Text>
-        </TouchableOpacity>
+      <View style={styles.actionBar}>
+        {!pdfPath ? (
+          <TouchableOpacity
+            style={[styles.button, styles.generateButton, (loading || !htmlReady) && styles.buttonDisabled]}
+            onPress={handleGeneratePDF}
+            disabled={loading || !htmlReady}
+          >
+            {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Generar PDF</Text>}
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            style={[styles.button, styles.shareButton, (sharing || isSubmittingReport) && styles.buttonDisabled]}
+            onPress={handleSharePDF}
+            disabled={sharing || isSubmittingReport}
+          >
+            {sharing || isSubmittingReport ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.buttonIcon}>📤</Text>
+                <Text style={styles.buttonText}>Enviar PDF</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       {pdfPath && (
         <View style={styles.statusBar}>
-          <Text style={styles.statusText}>✅ PDF listo para compartir por WhatsApp</Text>
+          <Text style={styles.statusText}>✅ PDF generado y listo para compartir</Text>
         </View>
       )}
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f3f4f6' },
+  container: {
+    flex: 1,
+    backgroundColor: '#ffffff',
+  },
   header: {
-    paddingTop: Platform.OS === 'ios' ? 0 : 12,
-    paddingHorizontal: 16,
-    paddingBottom: 12,
-    backgroundColor: 'white',
+    backgroundColor: '#ffffff',
+    paddingTop: Platform.OS === 'ios' ? 0 : 16,
+    paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#ffffff',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
   },
-  iconButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  closeButton: {
+    padding: 4,
+    width: 40,
+    marginTop: 10,
+  },
+  headerTitleContainer: {
+    flex: 1,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  headerTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
-  previewWrap: { flex: 1, margin: 10, borderRadius: 12, overflow: 'hidden', backgroundColor: 'white' },
-  webview: { flex: 1, backgroundColor: 'white' },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8 },
-  loadingText: { color: '#6b7280' },
-  actions: {
-    padding: 12,
-    backgroundColor: 'white',
+  headerIcon: {
+    marginRight: 8,
+    paddingTop: 10,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1a1a1a',
+    paddingTop: 10,
+  },
+  headerPlaceholder: {
+    width: 40,
+  },
+  previewContainer: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#666',
+  },
+  webview: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  actionBar: {
+    padding: 16,
+    backgroundColor: '#fff',
     borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
-    gap: 10,
+    borderTopColor: '#e0e0e0',
+    gap: 12,
   },
-  primaryButton: {
-    backgroundColor: '#0ea5e9',
-    borderRadius: 10,
-    paddingVertical: 13,
+  button: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  primaryText: { color: 'white', fontWeight: '700' },
-  secondaryButton: {
-    borderWidth: 1,
-    borderColor: '#0ea5e9',
-    borderRadius: 10,
-    paddingVertical: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    backgroundColor: '#ffffff',
+  buttonIcon: {
+    fontSize: 20,
+    marginRight: 8,
   },
-  secondaryText: {
-    color: '#0ea5e9',
-    fontWeight: '700',
+  buttonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#fff',
   },
-  disabledButton: { opacity: 0.6 },
+  generateButton: {
+    backgroundColor: '#0066cc',
+  },
+  shareButton: {
+    backgroundColor: '#25D366',
+  },
+  buttonDisabled: {
+    opacity: 0.6,
+  },
   statusBar: {
-    backgroundColor: '#ecfdf5',
-    borderTopWidth: 1,
-    borderTopColor: '#a7f3d0',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
+    backgroundColor: '#e8f5e9',
+    padding: 12,
+    alignItems: 'center',
   },
   statusText: {
-    color: '#065f46',
-    fontSize: 12,
-    textAlign: 'center',
+    color: '#2e7d32',
+    fontSize: 14,
     fontWeight: '600',
   },
 });
+
+export default BreakdownPreviewScreen;

@@ -459,6 +459,8 @@ class ApiService {
       photo1Url: string;
       photo2Url: string;
       createdAt?: string;
+      localPdfBase64?: string;
+      localPdfFileName?: string;
     },
     token: string
   ): Promise<any> {
@@ -514,21 +516,21 @@ class ApiService {
 
   // Project Pools Methods
   async getProjectPools(projectId: string, token: string): Promise<any[]> {
-    const response = await this.request(`/project-pools/${projectId}`, {
+    const response = await this.request<any>(`/project-pools/${projectId}`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${token}`,
       },
     });
     // Extraer el array de data si viene envuelto
-    return response.data || response;
+    return (response as any).data || response;
   }
 
   async createProjectPool(
     poolData: { project_id: string; name: string; type: 'pool' | 'spa' | 'fountain'; gallons?: number },
     token: string
   ): Promise<any> {
-    const response = await this.request('/project-pools', {
+    const response = await this.request<any>('/project-pools', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -536,7 +538,7 @@ class ApiService {
       },
       body: JSON.stringify(poolData),
     });
-    return response.data || response;
+    return (response as any).data || response;
   }
 
   async updateProjectPool(
@@ -544,7 +546,7 @@ class ApiService {
     poolData: { name: string; type: 'pool' | 'spa' | 'fountain'; gallons?: number },
     token: string
   ): Promise<any> {
-    const response = await this.request(`/project-pools/${id}`, {
+    const response = await this.request<any>(`/project-pools/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -552,7 +554,7 @@ class ApiService {
       },
       body: JSON.stringify(poolData),
     });
-    return response.data || response;
+    return (response as any).data || response;
   }
 
   async deleteProjectPool(id: number, token: string): Promise<any> {

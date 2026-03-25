@@ -6,6 +6,7 @@
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+import { Platform } from 'react-native';
 
 /**
  * Convierte una imagen local a base64
@@ -65,6 +66,8 @@ export const generatePDF = async (html: string, fileName: string): Promise<strin
     const { uri } = await Print.printToFileAsync({
       html,
       base64: false,
+      width: 595,    // A4 width in points (210mm)
+      height: 842,   // A4 height in points (297mm)
     });
 
     // Mover el archivo a un directorio permanente con el nombre deseado
@@ -103,12 +106,27 @@ export const sharePDF = async (filePath: string): Promise<void> => {
       throw new Error('La función de compartir no está disponible en este dispositivo');
     }
 
-    // Comparte el archivo
-    await Sharing.shareAsync(filePath, {
-      mimeType: 'application/pdf',
-      dialogTitle: 'Compartir Reporte',
-      UTI: 'com.adobe.pdf'
+    // Crear una copia con nombre limpio mejora compatibilidad en algunos destinos (ej. WhatsApp en iOS).
+    const cleanName = `reporte_${Date.now()}.pdf`;
+    const sharePath = `${FileSystem.cacheDirectory}${cleanName}`;
+    await FileSystem.copyAsync({
+      from: filePath,
+      to: sharePath,
     });
+
+    // iOS es mas estable compartiendo PDF sin mimeType explicito.
+    if (Platform.OS === 'ios') {
+      await Sharing.shareAsync(sharePath, {
+        dialogTitle: 'Compartir Reporte',
+        UTI: 'com.adobe.pdf',
+      });
+    } else {
+      await Sharing.shareAsync(sharePath, {
+        mimeType: 'application/pdf',
+        dialogTitle: 'Compartir Reporte',
+        UTI: 'com.adobe.pdf',
+      });
+    }
 
     console.log('✅ PDF compartido exitosamente');
   } catch (error) {
