@@ -578,9 +578,12 @@ export default function ReportHistoryScreen() {
       if (report.chemicals.soda > 0) chemicalsUsed.push(`• Soda: ${report.chemicals.soda} kg`);
       if (report.chemicals.bicarbonato > 0) chemicalsUsed.push(`• Bicarbonato: ${report.chemicals.bicarbonato} kg`);
       if (report.chemicals.sal > 0) chemicalsUsed.push(`• Sal: ${report.chemicals.sal} kg`);
-      if (report.chemicals.alguicida > 0) chemicalsUsed.push(`• Alguicida: ${report.chemicals.alguicida} L`);
-      if (report.chemicals.clarificador > 0) chemicalsUsed.push(`• Clarificador: ${report.chemicals.clarificador} L`);
+      if (report.chemicals.alguicida > 0) chemicalsUsed.push(`• Alguicida: ${report.chemicals.alguicida} OZ`);
+      if (report.chemicals.clarificador > 0) chemicalsUsed.push(`• Clarificador: ${report.chemicals.clarificador} OZ`);
       if (report.chemicals.cloro_liquido > 0) chemicalsUsed.push(`• Cloro Líquido: ${report.chemicals.cloro_liquido} L`);
+      if (report.chemicals.conquest > 0) chemicalsUsed.push(`• Conquest: ${report.chemicals.conquest} OZ`);
+      if (report.chemicals.estabilizador > 0) chemicalsUsed.push(`• Estabilizador: ${report.chemicals.estabilizador} kg`);
+      if (report.chemicals.floculante > 0) chemicalsUsed.push(`• Floculante: ${report.chemicals.floculante} OZ`);
       
       if (chemicalsUsed.length > 0) {
         message += `*🧪 QUÍMICOS UTILIZADOS*\n${chemicalsUsed.join('\n')}\n\n`;
@@ -1035,9 +1038,12 @@ export default function ReportHistoryScreen() {
                     {selectedReport.chemicals.soda > 0 && renderParameterValue('Soda', selectedReport.chemicals.soda, ' kg')}
                     {selectedReport.chemicals.bicarbonato > 0 && renderParameterValue('Bicarbonato', selectedReport.chemicals.bicarbonato, ' kg')}
                     {selectedReport.chemicals.sal > 0 && renderParameterValue('Sal', selectedReport.chemicals.sal, ' kg')}
-                    {selectedReport.chemicals.alguicida > 0 && renderParameterValue('Alguicida', selectedReport.chemicals.alguicida, ' L')}
-                    {selectedReport.chemicals.clarificador > 0 && renderParameterValue('Clarificador', selectedReport.chemicals.clarificador, ' L')}
+                    {selectedReport.chemicals.alguicida > 0 && renderParameterValue('Alguicida', selectedReport.chemicals.alguicida, ' OZ')}
+                    {selectedReport.chemicals.clarificador > 0 && renderParameterValue('Clarificador', selectedReport.chemicals.clarificador, ' OZ')}
                     {selectedReport.chemicals.cloro_liquido > 0 && renderParameterValue('Cloro Líquido', selectedReport.chemicals.cloro_liquido, ' L')}
+                    {selectedReport.chemicals.conquest > 0 && renderParameterValue('Conquest', selectedReport.chemicals.conquest, ' OZ')}
+                    {selectedReport.chemicals.estabilizador > 0 && renderParameterValue('Estabilizador', selectedReport.chemicals.estabilizador, ' kg')}
+                    {selectedReport.chemicals.floculante > 0 && renderParameterValue('Floculante', selectedReport.chemicals.floculante, ' OZ')}
                   </View>
                 </View>
               )}

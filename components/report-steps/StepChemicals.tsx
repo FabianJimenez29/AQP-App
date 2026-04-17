@@ -21,6 +21,9 @@ export default function StepChemicals() {
     alguicida: 0,
     clarificador: 0,
     cloro_liquido: 0,
+    conquest: 0,
+    estabilizador: 0,
+    floculante: 0,
   });
 
   const dispatch = useAppDispatch();
@@ -39,9 +42,12 @@ export default function StepChemicals() {
     { key: 'soda' as keyof Chemicals, label: 'Soda', unit: 'kg' },
     { key: 'bicarbonato' as keyof Chemicals, label: 'Bicarbonato', unit: 'kg' },
     { key: 'sal' as keyof Chemicals, label: 'Sal', unit: 'kg' },
-    { key: 'alguicida' as keyof Chemicals, label: 'Alguicida', unit: 'L' },
-    { key: 'clarificador' as keyof Chemicals, label: 'Clarificador', unit: 'L' },
+    { key: 'alguicida' as keyof Chemicals, label: 'Alguicida', unit: 'OZ' },
+    { key: 'clarificador' as keyof Chemicals, label: 'Clarificador', unit: 'OZ' },
     { key: 'cloro_liquido' as keyof Chemicals, label: 'Cloro Líquido', unit: 'L' },
+    { key: 'conquest' as keyof Chemicals, label: 'Conquest', unit: 'OZ' },
+    { key: 'estabilizador' as keyof Chemicals, label: 'Estabilizador', unit: 'KG' },
+    { key: 'floculante' as keyof Chemicals, label: 'Floculante', unit: 'OZ' },
   ];
 
   return (

@@ -131,9 +131,12 @@ export const generateReportHTML = (report: any, logoBase64: string = '', userEma
     soda: 'kg',
     bicarbonato: 'kg',
     sal: 'bolsas',
-    alguicida: 'L',
-    clarificador: 'L',
-    cloro_liquido: 'gl'
+    alguicida: 'OZ',
+    clarificador: 'OZ',
+    cloro_liquido: 'gl',
+    conquest: 'OZ',
+    estabilizador: 'kg',
+    floculante: 'OZ'
   };
 
   const chemicals = report.chemicals || {};

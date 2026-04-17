@@ -95,12 +95,12 @@ export default function UnifiedNewReportScreen() {
   // Strings para permitir decimales mientras se escribe
   const [chemicalsStr, setChemicalsStr] = useState<Record<string, string>>({
     tricloro: '', tabletas: '', acido: '', soda: '', bicarbonato: '',
-    sal: '', alguicida: '', clarificador: '', cloro_liquido: ''
+    sal: '', alguicida: '', clarificador: '', cloro_liquido: '', conquest: '', estabilizador: '', floculante: ''
   });
 
   const [chemicals, setChemicals] = useState<Chemicals>({
     tricloro: 0, tabletas: 0, acido: 0, soda: 0, bicarbonato: 0,
-    sal: 0, alguicida: 0, clarificador: 0, cloro_liquido: 0
+    sal: 0, alguicida: 0, clarificador: 0, cloro_liquido: 0, conquest: 0, estabilizador: 0, floculante: 0
   });
 
   const [equipmentCheck, setEquipmentCheck] = useState<EquipmentCheck>({
@@ -750,9 +750,12 @@ export default function UnifiedNewReportScreen() {
     { key: 'soda', label: 'Soda', unit: 'KG' },
     { key: 'bicarbonato', label: 'Bicarbonato', unit: 'KG' },
     { key: 'sal', label: 'Sal', unit: 'Bolsas' },
-    { key: 'alguicida', label: 'Alguicida', unit: 'L' },
-    { key: 'clarificador', label: 'Clarificador', unit: 'L' },
+    { key: 'alguicida', label: 'Alguicida', unit: 'OZ' },
+    { key: 'clarificador', label: 'Clarificador', unit: 'OZ' },
     { key: 'cloro_liquido', label: 'Cloro Líquido', unit: 'GL' },
+    { key: 'conquest', label: 'Conquest', unit: 'OZ' },
+    { key: 'estabilizador', label: 'Estabilizador', unit: 'KG' },
+    { key: 'floculante', label: 'Floculante', unit: 'OZ' },
   ];
 
   const equipmentSections = [
@@ -1994,7 +1997,7 @@ export default function UnifiedNewReportScreen() {
                   ))}
                   <View style={styles.warningCard}>
                     <Text style={styles.warningIcon}>⚠️</Text>
-                    <Text style={styles.warningText}>
+                    <Text style={styles.warningCardText}>
                       Estas son recomendaciones aproximadas. Siempre siga las instrucciones del fabricante del químico y ajuste según sea necesario.
                     </Text>
                   </View>
@@ -3202,7 +3205,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginRight: 10,
   },
-  warningText: {
+  warningCardText: {
     flex: 1,
     fontSize: 13,
     color: '#e65100',

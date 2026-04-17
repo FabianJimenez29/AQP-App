@@ -25,6 +25,9 @@ export interface Chemicals {
   alguicida: number;
   clarificador: number;
   cloro_liquido: number;
+  conquest: number;
+  estabilizador: number;
+  floculante: number;
 }
 
 export interface EquipmentItem {

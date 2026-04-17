@@ -244,6 +244,9 @@ export default function ReportHistoryScreen() {
         alguicida: 0,
         clarificador: 0,
         cloro_liquido: 0,
+        conquest: 0,
+        estabilizador: 0,
+        floculante: 0,
       },
       equipmentCheck: report.equipment_check || {},
       photoCloroPh: getCompleteImageUrl(report.photo_cloro_ph) || undefined,
@@ -728,9 +731,12 @@ export default function ReportHistoryScreen() {
       if (report.chemicals.soda > 0) chemicalsUsed.push(`• Soda: ${report.chemicals.soda} kg`);
       if (report.chemicals.bicarbonato > 0) chemicalsUsed.push(`• Bicarbonato: ${report.chemicals.bicarbonato} kg`);
       if (report.chemicals.sal > 0) chemicalsUsed.push(`• Sal: ${report.chemicals.sal} bolsas`);
-      if (report.chemicals.alguicida > 0) chemicalsUsed.push(`• Alguicida: ${report.chemicals.alguicida} L`);
-      if (report.chemicals.clarificador > 0) chemicalsUsed.push(`• Clarificador: ${report.chemicals.clarificador} L`);
+      if (report.chemicals.alguicida > 0) chemicalsUsed.push(`• Alguicida: ${report.chemicals.alguicida} OZ`);
+      if (report.chemicals.clarificador > 0) chemicalsUsed.push(`• Clarificador: ${report.chemicals.clarificador} OZ`);
       if (report.chemicals.cloro_liquido > 0) chemicalsUsed.push(`• Cloro Líquido: ${report.chemicals.cloro_liquido} gl`);
+      if (report.chemicals.conquest > 0) chemicalsUsed.push(`• Conquest: ${report.chemicals.conquest} OZ`);
+      if (report.chemicals.estabilizador > 0) chemicalsUsed.push(`• Estabilizador: ${report.chemicals.estabilizador} kg`);
+      if (report.chemicals.floculante > 0) chemicalsUsed.push(`• Floculante: ${report.chemicals.floculante} OZ`);
       
       if (chemicalsUsed.length > 0) {
         message += `*🧪 QUÍMICOS UTILIZADOS*\n${chemicalsUsed.join('\n')}\n\n`;
@@ -1331,9 +1337,12 @@ export default function ReportHistoryScreen() {
                     {selectedReport.chemicals.soda > 0 && renderParameterValue('Soda', selectedReport.chemicals.soda, ' kg')}
                     {selectedReport.chemicals.bicarbonato > 0 && renderParameterValue('Bicarbonato', selectedReport.chemicals.bicarbonato, ' kg')}
                     {selectedReport.chemicals.sal > 0 && renderParameterValue('Sal', selectedReport.chemicals.sal, ' bolsas')}
-                    {selectedReport.chemicals.alguicida > 0 && renderParameterValue('Alguicida', selectedReport.chemicals.alguicida, ' L')}
-                    {selectedReport.chemicals.clarificador > 0 && renderParameterValue('Clarificador', selectedReport.chemicals.clarificador, ' L')}
+                    {selectedReport.chemicals.alguicida > 0 && renderParameterValue('Alguicida', selectedReport.chemicals.alguicida, ' OZ')}
+                    {selectedReport.chemicals.clarificador > 0 && renderParameterValue('Clarificador', selectedReport.chemicals.clarificador, ' OZ')}
                     {selectedReport.chemicals.cloro_liquido > 0 && renderParameterValue('Cloro Líquido', selectedReport.chemicals.cloro_liquido, ' gl')}
+                    {selectedReport.chemicals.conquest > 0 && renderParameterValue('Conquest', selectedReport.chemicals.conquest, ' OZ')}
+                    {selectedReport.chemicals.estabilizador > 0 && renderParameterValue('Estabilizador', selectedReport.chemicals.estabilizador, ' kg')}
+                    {selectedReport.chemicals.floculante > 0 && renderParameterValue('Floculante', selectedReport.chemicals.floculante, ' OZ')}
                   </View>
                 </View>
               )}
@@ -1801,7 +1810,10 @@ const getChemicalLabel = (key: string): string => {
     sal: 'Sal',
     alguicida: 'Alguicida',
     clarificador: 'Clarificador',
-    cloro_liquido: 'Cloro Líquido'
+    cloro_liquido: 'Cloro Líquido',
+    conquest: 'Conquest',
+    estabilizador: 'Estabilizador',
+    floculante: 'Floculante'
   };
   return labels[key] || key;
 };
@@ -1814,9 +1826,12 @@ const getChemicalUnit = (key: string): string => {
     soda: 'L',
     bicarbonato: 'lb',
     sal: 'lb',
-    alguicida: 'L',
-    clarificador: 'L',
-    cloro_liquido: 'L'
+    alguicida: 'OZ',
+    clarificador: 'OZ',
+    cloro_liquido: 'L',
+    conquest: 'OZ',
+    estabilizador: 'kg',
+    floculante: 'OZ'
   };
   return units[key] || '';
 };

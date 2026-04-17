@@ -84,10 +84,13 @@ export default function AdminReportsScreen() {
     acido: { name: 'Ácido Muriático', unit: 'gl' },
     tabletas: { name: 'Tabletas de Cloro', unit: 'unidades' },
     tricloro: { name: 'Tricloro', unit: 'kg' },
-    alguicida: { name: 'Alguicida', unit: 'L' },
+    alguicida: { name: 'Alguicida', unit: 'OZ' },
     bicarbonato: { name: 'Bicarbonato', unit: 'kg' },
-    clarificador: { name: 'Clarificador', unit: 'L' },
+    clarificador: { name: 'Clarificador', unit: 'OZ' },
     cloro_liquido: { name: 'Cloro Líquido', unit: 'gl' },
+    conquest: { name: 'Conquest', unit: 'OZ' },
+    estabilizador: { name: 'Estabilizador', unit: 'kg' },
+    floculante: { name: 'Floculante', unit: 'OZ' },
   };
 
   const [reports, setReports] = useState<Report[]>([]);
